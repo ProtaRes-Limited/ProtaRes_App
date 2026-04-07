@@ -1,61 +1,93 @@
-import { type InputHTMLAttributes, useState } from 'react';
-import { Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import { View, TextInput, Text, Pressable } from 'react-native';
+import type { KeyboardTypeOptions } from 'react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import { cn } from '@/lib/utils';
 
-interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
+interface InputProps {
   label?: string;
+  placeholder?: string;
+  value?: string;
+  onChangeText?: (text: string) => void;
   error?: string;
   helperText?: string;
-  isPassword?: boolean;
+  secureTextEntry?: boolean;
+  keyboardType?: KeyboardTypeOptions;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  disabled?: boolean;
+  multiline?: boolean;
+  numberOfLines?: number;
 }
 
 export function Input({
   label,
+  placeholder,
+  value,
+  onChangeText,
   error,
   helperText,
-  isPassword = false,
-  className,
-  type,
-  ...props
+  secureTextEntry = false,
+  keyboardType,
+  autoCapitalize,
+  disabled = false,
+  multiline = false,
+  numberOfLines = 1,
 }: InputProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
+  const isPassword = secureTextEntry;
+  const isSecure = isPassword && !showPassword;
 
   return (
-    <div className="mb-4">
+    <View className="mb-4">
       {label && (
-        <label className="block text-gray-700 font-medium mb-1.5 text-sm">{label}</label>
+        <Text className="mb-1.5 text-sm font-medium text-gray-700">
+          {label}
+        </Text>
       )}
-      <div className="relative">
-        <input
-          type={inputType}
+
+      <View className="relative">
+        <TextInput
           className={cn(
-            'w-full h-12 px-4 rounded-lg border bg-white text-gray-900 placeholder-gray-400 text-base transition-colors',
-            'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500',
-            error ? 'border-emergency-500 focus:ring-emergency-500' : 'border-gray-300',
-            props.disabled && 'bg-gray-100 text-gray-500 cursor-not-allowed',
-            (isPassword || error) && 'pr-12',
-            className
+            'rounded-lg border bg-white px-4 py-3 text-base text-gray-900',
+            error ? 'border-emergency-500' : 'border-gray-300',
+            disabled && 'bg-gray-100 opacity-60',
+            multiline && 'min-h-[100px] py-3',
+            isPassword && 'pr-12',
           )}
-          {...props}
+          placeholder={placeholder}
+          placeholderTextColor="#9CA3AF"
+          value={value}
+          onChangeText={onChangeText}
+          secureTextEntry={isSecure}
+          keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize}
+          editable={!disabled}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
+          textAlignVertical={multiline ? 'top' : 'center'}
         />
+
         {isPassword && (
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+          <Pressable
+            onPress={() => setShowPassword((prev) => !prev)}
+            className="absolute right-3 top-0 bottom-0 items-center justify-center"
           >
-            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-          </button>
+            {showPassword ? (
+              <EyeOff size={20} color="#6B7280" />
+            ) : (
+              <Eye size={20} color="#6B7280" />
+            )}
+          </Pressable>
         )}
-        {error && !isPassword && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <AlertCircle size={20} className="text-emergency-500" />
-          </div>
-        )}
-      </div>
-      {error && <p className="text-emergency-500 text-sm mt-1">{error}</p>}
-      {helperText && !error && <p className="text-gray-500 text-sm mt-1">{helperText}</p>}
-    </div>
+      </View>
+
+      {error && (
+        <Text className="mt-1 text-sm text-emergency-500">{error}</Text>
+      )}
+
+      {helperText && !error && (
+        <Text className="mt-1 text-sm text-gray-500">{helperText}</Text>
+      )}
+    </View>
   );
 }

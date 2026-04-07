@@ -1,54 +1,108 @@
-import { useEffect, useState } from 'react';
-import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { Text, Pressable, Animated } from 'react-native';
+import { CheckCircle, XCircle, Info, AlertTriangle, X } from 'lucide-react-native';
 import { cn } from '@/lib/utils';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 interface ToastProps {
   visible: boolean;
-  type: ToastType;
+  type?: ToastType;
   message: string;
   duration?: number;
-  onHide: () => void;
+  onDismiss: () => void;
 }
 
-const config: Record<ToastType, { bg: string; Icon: typeof CheckCircle }> = {
-  success: { bg: 'bg-success-500', Icon: CheckCircle },
-  error: { bg: 'bg-emergency-500', Icon: AlertCircle },
-  info: { bg: 'bg-primary-500', Icon: Info },
-  warning: { bg: 'bg-warning-500', Icon: AlertCircle },
+const toastStyles: Record<ToastType, { bg: string; text: string; color: string }> = {
+  success: { bg: 'bg-success-500', text: 'text-white', color: '#FFFFFF' },
+  error: { bg: 'bg-emergency-500', text: 'text-white', color: '#FFFFFF' },
+  info: { bg: 'bg-blue-500', text: 'text-white', color: '#FFFFFF' },
+  warning: { bg: 'bg-yellow-500', text: 'text-white', color: '#FFFFFF' },
 };
 
-export function Toast({ visible, type, message, duration = 3000, onHide }: ToastProps) {
-  const [show, setShow] = useState(false);
-  const { bg, Icon } = config[type];
+const toastIcons: Record<ToastType, typeof CheckCircle> = {
+  success: CheckCircle,
+  error: XCircle,
+  info: Info,
+  warning: AlertTriangle,
+};
+
+export function Toast({
+  visible,
+  type = 'info',
+  message,
+  duration = 3000,
+  onDismiss,
+}: ToastProps) {
+  const translateY = useRef(new Animated.Value(-100)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (visible) {
-      setShow(true);
-      const timer = setTimeout(() => {
-        setShow(false);
-        setTimeout(onHide, 200);
+      Animated.parallel([
+        Animated.spring(translateY, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 80,
+          friction: 12,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      timerRef.current = setTimeout(() => {
+        handleDismiss();
       }, duration);
-      return () => clearTimeout(timer);
     }
-  }, [visible, duration, onHide]);
+
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, [visible]);
+
+  const handleDismiss = () => {
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: -100,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onDismiss();
+    });
+  };
 
   if (!visible) return null;
 
+  const style = toastStyles[type];
+  const Icon = toastIcons[type];
+
   return (
-    <div
+    <Animated.View
       className={cn(
-        'fixed bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-96 z-50',
-        bg, 'rounded-lg p-4 flex items-center shadow-lg transition-opacity duration-200',
-        show ? 'opacity-100' : 'opacity-0'
+        'absolute left-4 right-4 top-12 z-50 flex-row items-center rounded-xl px-4 py-3 shadow-lg',
+        style.bg,
       )}
+      style={{ transform: [{ translateY }], opacity }}
     >
-      <Icon size={24} className="text-white flex-shrink-0" />
-      <p className="flex-1 text-white font-medium ml-3">{message}</p>
-      <button onClick={() => { setShow(false); setTimeout(onHide, 200); }} className="ml-2">
-        <X size={18} className="text-white/80 hover:text-white" />
-      </button>
-    </div>
+      <Icon size={20} color={style.color} />
+      <Text className={cn('ml-3 flex-1 text-sm font-medium', style.text)}>
+        {message}
+      </Text>
+      <Pressable onPress={handleDismiss} className="ml-2">
+        <X size={18} color={style.color} />
+      </Pressable>
+    </Animated.View>
   );
 }

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Coordinates, TransportMode } from '@/types';
 
 interface LocationState {
+  // State
   currentLocation: Coordinates | null;
   locationPermission: 'granted' | 'denied' | 'undetermined';
   isTracking: boolean;
@@ -10,11 +11,17 @@ interface LocationState {
   heading: number | null;
   speed: number | null;
   lastUpdated: Date | null;
+
+  // Actions
   setLocation: (location: Coordinates) => void;
   setLocationPermission: (permission: 'granted' | 'denied' | 'undetermined') => void;
   setTracking: (tracking: boolean) => void;
   setTransportMode: (mode: TransportMode) => void;
-  updateLocationDetails: (details: { accuracy?: number; heading?: number; speed?: number }) => void;
+  updateLocationDetails: (details: {
+    accuracy?: number;
+    heading?: number;
+    speed?: number;
+  }) => void;
   clearLocation: () => void;
 }
 
@@ -35,7 +42,9 @@ export const useLocationStore = create<LocationState>((set) => ({
     }),
 
   setLocationPermission: (permission) => set({ locationPermission: permission }),
+
   setTracking: (isTracking) => set({ isTracking }),
+
   setTransportMode: (transportMode) => set({ transportMode }),
 
   updateLocationDetails: (details) =>

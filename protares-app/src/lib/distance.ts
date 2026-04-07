@@ -1,41 +1,53 @@
-import type { Coordinates } from '@/types';
+import type { Coordinates, TransportMode } from '@/types';
 import { haversineDistance } from './utils';
 
 /**
- * Estimates travel time based on transport mode and distance.
+ * Average speeds in meters per second for each transport mode.
+ */
+const AVERAGE_SPEEDS: Record<TransportMode, number> = {
+  stationary: 0,
+  walking: 1.4, // ~5 km/h
+  cycling: 5.5, // ~20 km/h
+  bus: 6.9, // ~25 km/h (accounting for stops)
+  train: 13.9, // ~50 km/h (accounting for stops)
+  driving: 8.3, // ~30 km/h (urban average)
+  unknown: 1.4, // Default to walking
+};
+
+/**
+ * Estimate travel time in seconds from origin to destination
+ * based on the transport mode.
  */
 export function estimateTravelTime(
-  from: Coordinates,
-  to: Coordinates,
-  mode: 'walking' | 'cycling' | 'driving' | 'transit'
+  origin: Coordinates,
+  destination: Coordinates,
+  transportMode: TransportMode
 ): number {
-  const distance = haversineDistance(from, to);
+  const distance = haversineDistance(origin, destination);
+  const speed = AVERAGE_SPEEDS[transportMode];
 
-  // Average speeds in m/s
-  const speeds: Record<string, number> = {
-    walking: 1.4, // ~5 km/h
-    cycling: 4.5, // ~16 km/h
-    driving: 8.3, // ~30 km/h (urban)
-    transit: 6.0, // ~22 km/h (average with stops)
-  };
+  if (speed <= 0) return Infinity;
 
-  const speed = speeds[mode] || speeds.walking;
-  return Math.ceil(distance / speed);
+  // Apply a detour factor (straight-line distance is shorter than actual travel)
+  const detourFactor = transportMode === 'walking' || transportMode === 'cycling' ? 1.3 : 1.4;
+
+  return (distance * detourFactor) / speed;
 }
 
 /**
- * Checks if a coordinate is within a given radius of another coordinate.
+ * Check if a coordinate is within a given radius (in km) of a center point.
  */
 export function isWithinRadius(
-  center: Coordinates,
   point: Coordinates,
-  radiusMeters: number
+  center: Coordinates,
+  radiusKm: number
 ): boolean {
-  return haversineDistance(center, point) <= radiusMeters;
+  const distanceMeters = haversineDistance(point, center);
+  return distanceMeters <= radiusKm * 1000;
 }
 
 /**
- * Sorts coordinates by distance from a reference point.
+ * Sort an array of items with a location by distance from a reference point.
  */
 export function sortByDistance<T extends { location: Coordinates }>(
   items: T[],

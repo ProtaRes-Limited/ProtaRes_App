@@ -1,52 +1,45 @@
-import { useEffect, useState } from 'react';
-import { Heart, Car, Stethoscope, AlertTriangle, MapPin, Clock, Users, Ambulance } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { View, Text, Animated } from 'react-native';
+import { AlertTriangle, MapPin, Clock, Users, Ambulance } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import type { Emergency, EmergencyType } from '@/types';
-import { formatDistance, formatDuration } from '@/lib/utils';
-import { ALERT_TIMEOUT_SECONDS } from '@/lib/constants';
 
 interface EmergencyAlertCardProps {
-  emergency: Emergency;
-  etaSeconds: number;
-  distanceMeters: number;
-  corridorMatch?: string;
+  type: string;
+  location: string;
+  eta?: string;
+  casualtyCount?: number;
+  ambulanceEta?: string;
+  countdownSeconds?: number;
   onAccept: () => void;
   onDecline: () => void;
 }
 
-const emergencyIcons: Partial<Record<EmergencyType, typeof Heart>> = {
-  cardiac_arrest: Heart,
-  heart_attack: Heart,
-  road_accident: Car,
-  pedestrian_incident: Car,
-  stroke: Stethoscope,
-};
-
-const emergencyLabels: Partial<Record<EmergencyType, string>> = {
-  cardiac_arrest: 'CARDIAC ARREST',
-  heart_attack: 'HEART ATTACK',
-  road_accident: 'ROAD ACCIDENT',
-  pedestrian_incident: 'PEDESTRIAN INCIDENT',
-  stroke: 'STROKE',
-  stabbing: 'STABBING',
-};
-
 export function EmergencyAlertCard({
-  emergency,
-  etaSeconds,
-  distanceMeters,
-  corridorMatch,
+  type,
+  location,
+  eta,
+  casualtyCount,
+  ambulanceEta,
+  countdownSeconds = 60,
   onAccept,
   onDecline,
 }: EmergencyAlertCardProps) {
-  const [timeLeft, setTimeLeft] = useState(ALERT_TIMEOUT_SECONDS);
-  const Icon = emergencyIcons[emergency.emergencyType] || AlertTriangle;
-  const label = emergencyLabels[emergency.emergencyType] || 'EMERGENCY';
+  const [secondsLeft, setSecondsLeft] = useState(countdownSeconds);
+  const progressAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+
+    Animated.timing(progressAnim, {
+      toValue: 0,
+      duration: countdownSeconds * 1000,
+      useNativeDriver: false,
+    }).start();
+
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
+      setSecondsLeft((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
           onDecline();
@@ -55,68 +48,78 @@ export function EmergencyAlertCard({
         return prev - 1;
       });
     }, 1000);
+
     return () => clearInterval(interval);
-  }, [onDecline]);
+  }, []);
 
   return (
-    <Card variant="emergency" className="mx-4 animate-emergency-pulse">
-      <div className="flex items-center mb-4">
-        <div className="w-14 h-14 rounded-full bg-emergency-500 flex items-center justify-center mr-4 flex-shrink-0">
-          <Icon size={28} className="text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-emergency-700 font-bold text-lg">{label}</h3>
-          <p className="text-emergency-600 text-sm">
-            {corridorMatch || `${formatDistance(distanceMeters)} away`}
-          </p>
-        </div>
-      </div>
+    <Card variant="emergency">
+      <View className="mb-3 flex-row items-center gap-2">
+        <AlertTriangle size={24} color="#DC2626" />
+        <Text className="flex-1 text-lg font-bold text-emergency-600">
+          {type}
+        </Text>
+        <Text className="text-sm font-semibold text-emergency-500">
+          {secondsLeft}s
+        </Text>
+      </View>
 
-      <div className="space-y-2 mb-4">
-        <div className="flex items-center gap-2 text-gray-600 text-sm">
-          <MapPin size={16} className="flex-shrink-0" />
-          <span className="truncate">
-            {emergency.locationAddress || emergency.locationDescription || 'Location shared'}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 text-gray-600 text-sm">
-          <Clock size={16} className="flex-shrink-0" />
-          <span>ETA: {formatDuration(etaSeconds)}</span>
-        </div>
-        {emergency.casualtyCount > 0 && (
-          <div className="flex items-center gap-2 text-gray-600 text-sm">
-            <Users size={16} className="flex-shrink-0" />
-            <span>
-              {emergency.casualtyCount} {emergency.casualtyCount === 1 ? 'casualty' : 'casualties'}
-            </span>
-          </div>
+      <View className="mb-3 gap-2">
+        <View className="flex-row items-center gap-2">
+          <MapPin size={16} color="#6B7280" />
+          <Text className="flex-1 text-sm text-gray-700">{location}</Text>
+        </View>
+
+        {eta && (
+          <View className="flex-row items-center gap-2">
+            <Clock size={16} color="#6B7280" />
+            <Text className="text-sm text-gray-700">ETA: {eta}</Text>
+          </View>
         )}
-        {emergency.ambulanceEtaMinutes && (
-          <div className="flex items-center gap-2 text-gray-600 text-sm">
-            <Ambulance size={16} className="flex-shrink-0" />
-            <span>Ambulance ETA: {emergency.ambulanceEtaMinutes} mins</span>
-          </div>
+
+        {casualtyCount !== undefined && (
+          <View className="flex-row items-center gap-2">
+            <Users size={16} color="#6B7280" />
+            <Text className="text-sm text-gray-700">
+              {casualtyCount} {casualtyCount === 1 ? 'casualty' : 'casualties'}
+            </Text>
+          </View>
         )}
-      </div>
 
-      <div className="flex gap-3">
-        <Button variant="secondary" onClick={onDecline} fullWidth>
-          Decline
-        </Button>
-        <Button variant="emergency" onClick={onAccept} fullWidth>
-          Accept
-        </Button>
-      </div>
+        {ambulanceEta && (
+          <View className="flex-row items-center gap-2">
+            <Ambulance size={16} color="#6B7280" />
+            <Text className="text-sm text-gray-700">
+              Ambulance ETA: {ambulanceEta}
+            </Text>
+          </View>
+        )}
+      </View>
 
-      <div className="mt-3 text-center">
-        <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-          <div
-            className="bg-emergency-500 h-1.5 rounded-full transition-all duration-1000"
-            style={{ width: `${(timeLeft / ALERT_TIMEOUT_SECONDS) * 100}%` }}
-          />
-        </div>
-        <p className="text-gray-500 text-xs">{timeLeft} seconds to respond</p>
-      </div>
+      <View className="mb-4 h-2 overflow-hidden rounded-full bg-gray-200">
+        <Animated.View
+          className="h-full rounded-full bg-emergency-500"
+          style={{
+            width: progressAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: ['0%', '100%'],
+            }),
+          }}
+        />
+      </View>
+
+      <View className="flex-row gap-3">
+        <View className="flex-1">
+          <Button variant="danger" fullWidth onPress={onDecline}>
+            Decline
+          </Button>
+        </View>
+        <View className="flex-1">
+          <Button variant="success" fullWidth onPress={onAccept}>
+            Accept
+          </Button>
+        </View>
+      </View>
     </Card>
   );
 }

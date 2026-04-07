@@ -1,34 +1,42 @@
-import { type ReactNode, type HTMLAttributes } from 'react';
+import { View, Pressable } from 'react-native';
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 type CardVariant = 'default' | 'elevated' | 'outlined' | 'emergency' | 'active';
 
-interface CardProps extends HTMLAttributes<HTMLDivElement> {
+interface CardProps {
   children: ReactNode;
   variant?: CardVariant;
-  clickable?: boolean;
+  onPress?: () => void;
+  className?: string;
 }
 
 const variantStyles: Record<CardVariant, string> = {
-  default: 'bg-white shadow-md',
-  elevated: 'bg-white shadow-lg',
-  outlined: 'bg-white border border-gray-200',
-  emergency: 'bg-emergency-50 border-2 border-emergency-500 shadow-lg',
-  active: 'bg-primary-50 border-2 border-primary-500',
+  default: 'bg-white rounded-xl p-4',
+  elevated: 'bg-white rounded-xl p-4 shadow-md',
+  outlined: 'bg-white rounded-xl p-4 border border-gray-200',
+  emergency: 'bg-emergency-50 rounded-xl p-4 border-2 border-emergency-500',
+  active: 'bg-primary-50 rounded-xl p-4 border-2 border-primary-500',
 };
 
-export function Card({ children, variant = 'default', clickable, className, ...props }: CardProps) {
-  return (
-    <div
-      className={cn(
-        'rounded-xl p-4',
-        variantStyles[variant],
-        clickable && 'cursor-pointer hover:opacity-90 transition-opacity',
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </div>
-  );
+export function Card({
+  children,
+  variant = 'default',
+  onPress,
+  className: extraClassName,
+}: CardProps) {
+  const styles = cn(variantStyles[variant], extraClassName);
+
+  if (onPress) {
+    return (
+      <Pressable
+        onPress={onPress}
+        className={cn(styles, 'active:opacity-90')}
+      >
+        {children}
+      </Pressable>
+    );
+  }
+
+  return <View className={styles}>{children}</View>;
 }

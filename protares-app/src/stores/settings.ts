@@ -1,15 +1,21 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface SettingsState {
-  alertRadius: number;
+  // Preferences
+  alertRadius: number; // km
   smsFallbackEnabled: boolean;
   soundEnabled: boolean;
   vibrationEnabled: boolean;
   darkMode: 'system' | 'light' | 'dark';
+
+  // Consents
   locationConsent: boolean;
   analyticsConsent: boolean;
   marketingConsent: boolean;
+
+  // Actions
   setAlertRadius: (radius: number) => void;
   setSmsFallback: (enabled: boolean) => void;
   setSoundEnabled: (enabled: boolean) => void;
@@ -43,6 +49,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'protares-settings',
+      storage: createJSONStorage(() => AsyncStorage),
     }
   )
 );

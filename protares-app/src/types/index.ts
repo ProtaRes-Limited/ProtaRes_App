@@ -1,3 +1,7 @@
+// src/types/index.ts
+
+// ============ ENUMS ============
+
 export type ResponderTier =
   | 'tier1_active_healthcare'
   | 'tier2_retired_healthcare'
@@ -76,6 +80,8 @@ export type EquipmentType =
   | 'oxygen'
   | 'cutting_gear';
 
+// ============ INTERFACES ============
+
 export interface Coordinates {
   latitude: number;
   longitude: number;
@@ -146,6 +152,7 @@ export interface Emergency {
   createdAt: string;
   updatedAt: string;
   resolvedAt: string | null;
+  // Computed
   distanceMeters?: number;
   etaMinutes?: number;
 }
@@ -172,6 +179,7 @@ export interface EmergencyResponse {
   completedAt: string | null;
   feedbackRating: number | null;
   feedbackNotes: string | null;
+  // Relations
   emergency?: Emergency;
   responder?: Responder;
 }
@@ -198,8 +206,10 @@ export interface GreenBadge {
   verified: boolean;
   issuedAt: string;
   expiresAt: string;
-  qrData: string;
+  qrData: string; // Encrypted QR code data
 }
+
+// ============ API TYPES ============
 
 export interface PaginatedResponse<T> {
   data: T[];

@@ -1,53 +1,69 @@
+import { View, Text } from 'react-native';
 import { cn } from '@/lib/utils';
-import type { ResponderTier } from '@/types';
 
 type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'tier';
-type BadgeSize = 'sm' | 'md' | 'lg';
 
 interface BadgeProps {
-  label: string;
+  children: React.ReactNode;
   variant?: BadgeVariant;
-  size?: BadgeSize;
-  tier?: ResponderTier;
 }
 
-const variantStyles: Record<Exclude<BadgeVariant, 'tier'>, { bg: string; text: string }> = {
-  default: { bg: 'bg-gray-100', text: 'text-gray-700' },
-  success: { bg: 'bg-success-100', text: 'text-success-700' },
-  warning: { bg: 'bg-warning-100', text: 'text-warning-700' },
-  error: { bg: 'bg-emergency-100', text: 'text-emergency-700' },
-  info: { bg: 'bg-primary-100', text: 'text-primary-700' },
+const variantBgStyles: Record<BadgeVariant, string> = {
+  default: 'bg-gray-100',
+  success: 'bg-success-100',
+  warning: 'bg-yellow-100',
+  error: 'bg-emergency-100',
+  info: 'bg-blue-100',
+  tier: 'bg-primary-100',
 };
 
-const tierStyles: Record<ResponderTier, { bg: string; text: string }> = {
-  tier1_active_healthcare: { bg: 'bg-success-100', text: 'text-success-700' },
-  tier2_retired_healthcare: { bg: 'bg-purple-100', text: 'text-purple-700' },
-  tier3_first_aid: { bg: 'bg-warning-100', text: 'text-warning-700' },
-  tier4_witness: { bg: 'bg-primary-100', text: 'text-primary-700' },
+const variantTextStyles: Record<BadgeVariant, string> = {
+  default: 'text-gray-700',
+  success: 'text-success-700',
+  warning: 'text-yellow-700',
+  error: 'text-emergency-700',
+  info: 'text-blue-700',
+  tier: 'text-primary-700',
 };
 
-const sizeStyles: Record<BadgeSize, string> = {
-  sm: 'px-2 py-0.5 text-xs',
-  md: 'px-2.5 py-1 text-sm',
-  lg: 'px-3 py-1.5 text-base',
-};
-
-export function Badge({ label, variant = 'default', size = 'md', tier }: BadgeProps) {
-  const styles = variant === 'tier' && tier ? tierStyles[tier] : variantStyles[variant as Exclude<BadgeVariant, 'tier'>];
-
+export function Badge({ children, variant = 'default' }: BadgeProps) {
   return (
-    <span className={cn('inline-flex items-center rounded-full font-medium', styles.bg, styles.text, sizeStyles[size])}>
-      {label}
-    </span>
+    <View className={cn('self-start rounded-full px-3 py-1', variantBgStyles[variant])}>
+      <Text className={cn('text-xs font-semibold', variantTextStyles[variant])}>
+        {children}
+      </Text>
+    </View>
   );
 }
 
-export function TierBadge({ tier }: { tier: ResponderTier }) {
-  const labels: Record<ResponderTier, string> = {
-    tier1_active_healthcare: 'Healthcare',
-    tier2_retired_healthcare: 'Retired HC',
-    tier3_first_aid: 'First Aid',
-    tier4_witness: 'Witness',
-  };
-  return <Badge label={labels[tier]} variant="tier" tier={tier} />;
+type TierLevel = 1 | 2 | 3 | 4;
+
+interface TierBadgeProps {
+  tier: TierLevel;
+}
+
+const tierLabels: Record<TierLevel, string> = {
+  1: 'Tier 1 — Emergency First Responder',
+  2: 'Tier 2 — Enhanced Responder',
+  3: 'Tier 3 — Community First Aider',
+  4: 'Tier 4 — Aware Citizen',
+};
+
+const tierColors: Record<TierLevel, { bg: string; text: string }> = {
+  1: { bg: 'bg-emergency-100', text: 'text-emergency-700' },
+  2: { bg: 'bg-primary-100', text: 'text-primary-700' },
+  3: { bg: 'bg-success-100', text: 'text-success-700' },
+  4: { bg: 'bg-gray-100', text: 'text-gray-700' },
+};
+
+export function TierBadge({ tier }: TierBadgeProps) {
+  const colors = tierColors[tier];
+
+  return (
+    <View className={cn('self-start rounded-full px-3 py-1', colors.bg)}>
+      <Text className={cn('text-xs font-bold', colors.text)}>
+        {tierLabels[tier]}
+      </Text>
+    </View>
+  );
 }

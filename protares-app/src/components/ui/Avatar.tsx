@@ -1,55 +1,73 @@
-import { User } from 'lucide-react';
+import { View, Image, Text } from 'react-native';
+import { User } from 'lucide-react-native';
 import { cn } from '@/lib/utils';
 
 type AvatarSize = 'sm' | 'md' | 'lg' | 'xl';
 
 interface AvatarProps {
-  src?: string | null;
+  source?: string;
   name?: string;
   size?: AvatarSize;
-  showOnlineStatus?: boolean;
-  isOnline?: boolean;
+  online?: boolean;
 }
 
-const sizeStyles: Record<AvatarSize, { container: string; text: string; icon: number }> = {
-  sm: { container: 'w-8 h-8', text: 'text-sm', icon: 16 },
-  md: { container: 'w-10 h-10', text: 'text-base', icon: 20 },
-  lg: { container: 'w-14 h-14', text: 'text-xl', icon: 28 },
-  xl: { container: 'w-20 h-20', text: 'text-2xl', icon: 40 },
+const sizeStyles: Record<AvatarSize, { container: string; text: string; icon: number; dot: string }> = {
+  sm: { container: 'h-8 w-8', text: 'text-xs', icon: 16, dot: 'h-2.5 w-2.5' },
+  md: { container: 'h-10 w-10', text: 'text-sm', icon: 20, dot: 'h-3 w-3' },
+  lg: { container: 'h-14 w-14', text: 'text-lg', icon: 28, dot: 'h-3.5 w-3.5' },
+  xl: { container: 'h-20 w-20', text: 'text-2xl', icon: 36, dot: 'h-4 w-4' },
 };
 
-export function Avatar({ src, name, size = 'md', showOnlineStatus = false, isOnline = false }: AvatarProps) {
-  const initials = name
-    ?.split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((part) => part.charAt(0))
     .join('')
-    .toUpperCase();
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+export function Avatar({ source, name, size = 'md', online }: AvatarProps) {
+  const s = sizeStyles[size];
 
   return (
-    <div className="relative inline-flex">
-      <div
-        className={cn(
-          sizeStyles[size].container,
-          'rounded-full overflow-hidden bg-primary-100 flex items-center justify-center'
-        )}
-      >
-        {src ? (
-          <img src={src} alt={name || 'Avatar'} className="w-full h-full object-cover" />
-        ) : initials ? (
-          <span className={cn(sizeStyles[size].text, 'font-semibold text-primary-600')}>{initials}</span>
-        ) : (
-          <User size={sizeStyles[size].icon} className="text-primary-500" />
-        )}
-      </div>
-      {showOnlineStatus && (
-        <span
+    <View className="relative">
+      {source ? (
+        <Image
+          source={{ uri: source }}
+          className={cn('rounded-full', s.container)}
+        />
+      ) : name ? (
+        <View
           className={cn(
-            'absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white',
-            isOnline ? 'bg-success-500' : 'bg-gray-400'
+            'items-center justify-center rounded-full bg-primary-100',
+            s.container,
+          )}
+        >
+          <Text className={cn('font-semibold text-primary-700', s.text)}>
+            {getInitials(name)}
+          </Text>
+        </View>
+      ) : (
+        <View
+          className={cn(
+            'items-center justify-center rounded-full bg-gray-200',
+            s.container,
+          )}
+        >
+          <User size={s.icon} color="#6B7280" />
+        </View>
+      )}
+
+      {online !== undefined && (
+        <View
+          className={cn(
+            'absolute bottom-0 right-0 rounded-full border-2 border-white',
+            s.dot,
+            online ? 'bg-success-500' : 'bg-gray-400',
           )}
         />
       )}
-    </div>
+    </View>
   );
 }

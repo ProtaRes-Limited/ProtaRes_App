@@ -1,52 +1,21 @@
 import { supabase } from './supabase';
-import type { Emergency, EmergencyType, Coordinates, ResponseStatus } from '@/types';
-
-function transformEmergency(row: Record<string, unknown>): Emergency {
-  const location = row.location as { coordinates?: number[] } | null;
-  return {
-    id: row.id as string,
-    emergencyType: row.emergency_type as EmergencyType,
-    severity: row.severity as Emergency['severity'],
-    status: row.status as Emergency['status'],
-    location: location?.coordinates
-      ? { latitude: location.coordinates[1], longitude: location.coordinates[0] }
-      : { latitude: 0, longitude: 0 },
-    locationAddress: (row.location_address as string) || null,
-    locationDescription: (row.location_description as string) || null,
-    what3words: (row.what3words as string) || null,
-    reportedBy: (row.reported_by as string) || null,
-    reporterPhone: (row.reporter_phone as string) || null,
-    reporterName: (row.reporter_name as string) || null,
-    description: (row.description as string) || null,
-    casualtyCount: (row.casualty_count as number) || 1,
-    casualtiesConscious: (row.casualties_conscious as boolean) ?? null,
-    casualtiesBreathing: (row.casualties_breathing as boolean) ?? null,
-    witnessStreamActive: (row.witness_stream_active as boolean) || false,
-    witnessStreamUrl: (row.witness_stream_url as string) || null,
-    equipmentRequested: (row.equipment_requested as Emergency['equipmentRequested']) || [],
-    equipmentDelivered: (row.equipment_delivered as Emergency['equipmentDelivered']) || [],
-    ambulanceNotified: (row.ambulance_notified as boolean) || false,
-    ambulanceNotifiedAt: (row.ambulance_notified_at as string) || null,
-    ambulanceEtaMinutes: (row.ambulance_eta_minutes as number) || null,
-    policeNotified: (row.police_notified as boolean) || false,
-    fireNotified: (row.fire_notified as boolean) || false,
-    createdAt: row.created_at as string,
-    updatedAt: row.updated_at as string,
-    resolvedAt: (row.resolved_at as string) || null,
-  };
-}
+import type {
+  Emergency,
+  EmergencyType,
+  Coordinates,
+  ResponseStatus,
+} from '@/types';
 
 export const emergencyService = {
-  async getNearbyEmergencies(_location: Coordinates, _radiusKm: number = 10) {
-    const { data, error } = await supabase
-      .from('emergencies')
-      .select('*')
-      .not('status', 'in', '("resolved","cancelled")')
-      .order('created_at', { ascending: false })
-      .limit(20);
+  async getNearbyEmergencies(location: Coordinates, radiusKm: number = 10) {
+    const { data, error } = await supabase.rpc('find_nearby_emergencies', {
+      lat: location.latitude,
+      lng: location.longitude,
+      radius_km: radiusKm,
+    });
 
     if (error) throw error;
-    return (data || []).map(transformEmergency);
+    return (data as Record<string, unknown>[]).map(transformEmergency);
   },
 
   async getEmergency(id: string): Promise<Emergency> {
@@ -57,7 +26,7 @@ export const emergencyService = {
       .single();
 
     if (error) throw error;
-    return transformEmergency(data);
+    return transformEmergency(data as Record<string, unknown>);
   },
 
   async reportEmergency(report: {
@@ -65,7 +34,6 @@ export const emergencyService = {
     location: Coordinates;
     description?: string;
     casualtyCount?: number;
-    locationDescription?: string;
   }) {
     const {
       data: { user },
@@ -77,7 +45,6 @@ export const emergencyService = {
         emergency_type: report.emergencyType,
         location: `POINT(${report.location.longitude} ${report.location.latitude})`,
         description: report.description,
-        location_description: report.locationDescription,
         casualty_count: report.casualtyCount || 1,
         reported_by: user?.id,
       })
@@ -85,7 +52,7 @@ export const emergencyService = {
       .single();
 
     if (error) throw error;
-    return transformEmergency(data);
+    return transformEmergency(data as Record<string, unknown>);
   },
 
   async acceptEmergency(emergencyId: string, etaSeconds: number) {
@@ -134,13 +101,16 @@ export const emergencyService = {
   ) {
     const { error } = await supabase
       .from('responses')
-      .update({ status, ...additionalData })
+      .update({
+        status,
+        ...additionalData,
+      })
       .eq('id', responseId);
 
     if (error) throw error;
   },
 
-  async getResponseHistory(limit: number = 20) {
+  async getResponseHistory() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -150,14 +120,16 @@ export const emergencyService = {
       .from('responses')
       .select('*, emergencies(*)')
       .eq('responder_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(limit);
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return data;
   },
 
-  subscribeToEmergency(emergencyId: string, callback: (emergency: Emergency) => void) {
+  subscribeToEmergency(
+    emergencyId: string,
+    callback: (emergency: Emergency) => void
+  ) {
     return supabase
       .channel(`emergency:${emergencyId}`)
       .on(
@@ -169,9 +141,51 @@ export const emergencyService = {
           filter: `id=eq.${emergencyId}`,
         },
         (payload) => {
-          callback(transformEmergency(payload.new as Record<string, unknown>));
+          callback(
+            transformEmergency(payload.new as Record<string, unknown>)
+          );
         }
       )
       .subscribe();
   },
 };
+
+function transformEmergency(row: Record<string, unknown>): Emergency {
+  const r = row as Record<string, any>;
+  return {
+    id: r.id,
+    emergencyType: r.emergency_type,
+    severity: r.severity,
+    status: r.status,
+    location: r.location?.coordinates
+      ? {
+          latitude: r.location.coordinates[1],
+          longitude: r.location.coordinates[0],
+        }
+      : { latitude: r.latitude ?? 0, longitude: r.longitude ?? 0 },
+    locationAddress: r.location_address,
+    locationDescription: r.location_description,
+    what3words: r.what3words,
+    reportedBy: r.reported_by,
+    reporterPhone: r.reporter_phone,
+    reporterName: r.reporter_name,
+    description: r.description,
+    casualtyCount: r.casualty_count ?? 1,
+    casualtiesConscious: r.casualties_conscious,
+    casualtiesBreathing: r.casualties_breathing,
+    witnessStreamActive: r.witness_stream_active ?? false,
+    witnessStreamUrl: r.witness_stream_url,
+    equipmentRequested: r.equipment_requested ?? [],
+    equipmentDelivered: r.equipment_delivered ?? [],
+    ambulanceNotified: r.ambulance_notified ?? false,
+    ambulanceNotifiedAt: r.ambulance_notified_at,
+    ambulanceEtaMinutes: r.ambulance_eta_minutes,
+    policeNotified: r.police_notified ?? false,
+    fireNotified: r.fire_notified ?? false,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+    resolvedAt: r.resolved_at,
+    distanceMeters: r.distance_meters,
+    etaMinutes: r.eta_minutes,
+  };
+}

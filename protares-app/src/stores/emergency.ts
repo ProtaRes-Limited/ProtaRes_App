@@ -2,11 +2,18 @@ import { create } from 'zustand';
 import type { Emergency, EmergencyResponse, ResponseStatus } from '@/types';
 
 interface EmergencyState {
+  // Active emergency response
   activeEmergency: Emergency | null;
   activeResponse: EmergencyResponse | null;
+
+  // Incoming alerts
   pendingAlerts: Emergency[];
+
+  // State
   isResponding: boolean;
   responseStatus: ResponseStatus | null;
+
+  // Actions
   setActiveEmergency: (emergency: Emergency | null) => void;
   setActiveResponse: (response: EmergencyResponse | null) => void;
   addPendingAlert: (emergency: Emergency) => void;

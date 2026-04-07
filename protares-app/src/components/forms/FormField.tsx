@@ -1,43 +1,53 @@
-import { Controller, type Control, type FieldValues, type Path } from 'react-hook-form';
+import { Controller, useFormContext } from 'react-hook-form';
+import type { FieldValues, Path } from 'react-hook-form';
 import { Input } from '@/components/ui/Input';
+import type { KeyboardTypeOptions } from 'react-native';
 
 interface FormFieldProps<T extends FieldValues> {
-  control: Control<T>;
   name: Path<T>;
   label?: string;
   placeholder?: string;
-  isPassword?: boolean;
-  type?: string;
-  autoComplete?: string;
+  secureTextEntry?: boolean;
+  keyboardType?: KeyboardTypeOptions;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   disabled?: boolean;
+  multiline?: boolean;
+  numberOfLines?: number;
+  helperText?: string;
 }
 
 export function FormField<T extends FieldValues>({
-  control,
   name,
   label,
   placeholder,
-  isPassword,
-  type,
-  autoComplete,
+  secureTextEntry,
+  keyboardType,
+  autoCapitalize,
   disabled,
+  multiline,
+  numberOfLines,
+  helperText,
 }: FormFieldProps<T>) {
+  const { control } = useFormContext<T>();
+
   return (
     <Controller
       control={control}
       name={name}
-      render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
+      render={({ field: { onChange, value }, fieldState: { error } }) => (
         <Input
           label={label}
           placeholder={placeholder}
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={onBlur}
+          value={value as string}
+          onChangeText={onChange}
           error={error?.message}
-          isPassword={isPassword}
-          type={type}
-          autoComplete={autoComplete}
+          helperText={helperText}
+          secureTextEntry={secureTextEntry}
+          keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize}
           disabled={disabled}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
         />
       )}
     />

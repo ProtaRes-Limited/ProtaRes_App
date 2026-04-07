@@ -1,48 +1,54 @@
-import { type ReactNode, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { Modal as RNModal, View, Text, Pressable } from 'react-native';
+import { X } from 'lucide-react-native';
+import type { ReactNode } from 'react';
 
 interface ModalProps {
-  open: boolean;
+  visible: boolean;
   onClose: () => void;
   title?: string;
   children: ReactNode;
-  showCloseButton?: boolean;
-  dismissable?: boolean;
 }
 
-export function Modal({ open, onClose, title, children, showCloseButton = true, dismissable = true }: ModalProps) {
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [open]);
-
-  if (!open) return null;
-
+export function Modal({ visible, onClose, title, children }: ModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={dismissable ? onClose : undefined}
-      />
-      <div className="relative bg-white rounded-2xl w-full max-w-md mx-4 overflow-hidden shadow-xl">
-        {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-            {showCloseButton && (
-              <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
-                <X size={24} className="text-gray-500" />
-              </button>
-            )}
-          </div>
-        )}
-        <div className="p-4">{children}</div>
-      </div>
-    </div>
+    <RNModal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <Pressable
+        className="flex-1 items-center justify-center bg-black/50 px-6"
+        onPress={onClose}
+      >
+        <Pressable
+          className="w-full max-w-lg rounded-2xl bg-white p-6"
+          onPress={() => {}}
+        >
+          {title && (
+            <View className="mb-4 flex-row items-center justify-between">
+              <Text className="text-lg font-bold text-gray-900">{title}</Text>
+              <Pressable
+                onPress={onClose}
+                className="h-8 w-8 items-center justify-center rounded-full active:bg-gray-100"
+              >
+                <X size={20} color="#6B7280" />
+              </Pressable>
+            </View>
+          )}
+
+          {!title && (
+            <Pressable
+              onPress={onClose}
+              className="absolute right-4 top-4 z-10 h-8 w-8 items-center justify-center rounded-full active:bg-gray-100"
+            >
+              <X size={20} color="#6B7280" />
+            </Pressable>
+          )}
+
+          {children}
+        </Pressable>
+      </Pressable>
+    </RNModal>
   );
 }

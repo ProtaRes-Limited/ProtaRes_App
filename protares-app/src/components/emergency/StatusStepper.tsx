@@ -1,57 +1,87 @@
-import { Check } from 'lucide-react';
+import { View, Text } from 'react-native';
+import { Check } from 'lucide-react-native';
 import { cn } from '@/lib/utils';
-import type { ResponseStatus } from '@/types';
+
+type StepStatus = 'completed' | 'active' | 'pending';
+
+const STEPS = [
+  'Accepted',
+  'En Route',
+  'On Scene',
+  'Handover',
+  'Complete',
+] as const;
+
+type Step = (typeof STEPS)[number];
 
 interface StatusStepperProps {
-  currentStatus: ResponseStatus;
+  currentStep: Step;
 }
 
-const steps: { status: ResponseStatus; label: string }[] = [
-  { status: 'accepted', label: 'Accepted' },
-  { status: 'en_route', label: 'En Route' },
-  { status: 'on_scene', label: 'On Scene' },
-  { status: 'completing', label: 'Handover' },
-  { status: 'completed', label: 'Complete' },
-];
+function getStepStatus(stepIndex: number, currentIndex: number): StepStatus {
+  if (stepIndex < currentIndex) return 'completed';
+  if (stepIndex === currentIndex) return 'active';
+  return 'pending';
+}
 
-export function StatusStepper({ currentStatus }: StatusStepperProps) {
-  const currentIndex = steps.findIndex((s) => s.status === currentStatus);
+export function StatusStepper({ currentStep }: StatusStepperProps) {
+  const currentIndex = STEPS.indexOf(currentStep);
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-white">
-      {steps.map((step, index) => {
-        const isComplete = index < currentIndex;
-        const isCurrent = index === currentIndex;
+    <View className="flex-row items-center justify-between px-2">
+      {STEPS.map((step, index) => {
+        const status = getStepStatus(index, currentIndex);
+        const isLast = index === STEPS.length - 1;
 
         return (
-          <div key={step.status} className="flex flex-col items-center flex-1 relative">
-            {index > 0 && (
-              <div
+          <View key={step} className="flex-1 flex-row items-center">
+            <View className="items-center">
+              <View
                 className={cn(
-                  'absolute top-3 right-1/2 h-0.5 w-full -z-10',
-                  isComplete ? 'bg-success-500' : 'bg-gray-200'
+                  'h-7 w-7 items-center justify-center rounded-full',
+                  status === 'completed' && 'bg-success-500',
+                  status === 'active' && 'bg-primary-500',
+                  status === 'pending' && 'bg-gray-300',
+                )}
+              >
+                {status === 'completed' ? (
+                  <Check size={14} color="#FFFFFF" />
+                ) : (
+                  <Text
+                    className={cn(
+                      'text-xs font-bold',
+                      status === 'active' ? 'text-white' : 'text-gray-500',
+                    )}
+                  >
+                    {index + 1}
+                  </Text>
+                )}
+              </View>
+
+              <Text
+                className={cn(
+                  'mt-1 text-center text-[10px]',
+                  status === 'completed' && 'font-semibold text-success-600',
+                  status === 'active' && 'font-semibold text-primary-600',
+                  status === 'pending' && 'text-gray-400',
+                )}
+                numberOfLines={1}
+              >
+                {step}
+              </Text>
+            </View>
+
+            {!isLast && (
+              <View
+                className={cn(
+                  'mx-1 h-0.5 flex-1',
+                  index < currentIndex ? 'bg-success-500' : 'bg-gray-300',
                 )}
               />
             )}
-            <div
-              className={cn(
-                'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
-                isComplete ? 'bg-success-500 text-white' : isCurrent ? 'bg-primary-500 text-white' : 'bg-gray-200 text-gray-500'
-              )}
-            >
-              {isComplete ? <Check size={14} /> : index + 1}
-            </div>
-            <span
-              className={cn(
-                'text-[10px] mt-1 text-center leading-tight',
-                isCurrent ? 'text-primary-600 font-semibold' : 'text-gray-500'
-              )}
-            >
-              {step.label}
-            </span>
-          </div>
+          </View>
         );
       })}
-    </div>
+    </View>
   );
 }

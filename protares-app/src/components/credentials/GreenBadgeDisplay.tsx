@@ -1,66 +1,102 @@
-import { useEffect, useState } from 'react';
-import { BadgeCheck, Shield } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { View, Text, Animated } from 'react-native';
+import { ShieldCheck } from 'lucide-react-native';
+import QRCode from 'react-native-qrcode-svg';
 import { TierBadge } from '@/components/ui/Badge';
-import type { GreenBadge } from '@/types';
 
 interface GreenBadgeDisplayProps {
-  badge: GreenBadge;
-  onRefresh: () => void;
+  name: string;
+  tier: 1 | 2 | 3 | 4;
+  qrValue: string;
+  expiresAt: Date;
 }
 
-export function GreenBadgeDisplay({ badge, onRefresh }: GreenBadgeDisplayProps) {
-  const [timeLeft, setTimeLeft] = useState(60);
+function formatTimeRemaining(seconds: number): string {
+  if (seconds <= 0) return 'Expired';
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  if (hrs > 0) {
+    return `${hrs}h ${mins}m ${secs}s`;
+  }
+  return `${mins}m ${secs}s`;
+}
+
+export function GreenBadgeDisplay({
+  name,
+  tier,
+  qrValue,
+  expiresAt,
+}: GreenBadgeDisplayProps) {
+  const [secondsRemaining, setSecondsRemaining] = useState(() =>
+    Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)),
+  );
+  const totalSeconds = useRef(
+    Math.max(1, Math.floor((expiresAt.getTime() - Date.now()) / 1000)),
+  ).current;
+  const progressAnim = useRef(
+    new Animated.Value(secondsRemaining / totalSeconds),
+  ).current;
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const expires = new Date(badge.expiresAt).getTime();
-      const now = Date.now();
-      const remaining = Math.max(0, Math.floor((expires - now) / 1000));
-      setTimeLeft(remaining);
-
-      if (remaining === 0) {
-        onRefresh();
-      }
+      setSecondsRemaining((prev) => {
+        const next = Math.max(0, prev - 1);
+        return next;
+      });
     }, 1000);
 
+    Animated.timing(progressAnim, {
+      toValue: 0,
+      duration: secondsRemaining * 1000,
+      useNativeDriver: false,
+    }).start();
+
     return () => clearInterval(interval);
-  }, [badge.expiresAt, onRefresh]);
+  }, []);
+
+  const isExpired = secondsRemaining <= 0;
 
   return (
-    <div className="bg-white rounded-2xl p-6 flex flex-col items-center shadow-lg">
-      <div className="w-20 h-20 rounded-full bg-success-500 flex items-center justify-center mb-4">
-        <BadgeCheck size={48} className="text-white" />
-      </div>
+    <View className="items-center rounded-2xl bg-white p-6 shadow-md">
+      <View className="mb-3 flex-row items-center gap-2">
+        <ShieldCheck size={28} color={isExpired ? '#9CA3AF' : '#16A34A'} />
+        <Text className="text-xl font-bold text-gray-900">
+          {isExpired ? 'Badge Expired' : 'Verified Responder'}
+        </Text>
+      </View>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-2">{badge.name}</h2>
-      <TierBadge tier={badge.tier} />
+      <Text className="mb-2 text-lg font-semibold text-gray-800">{name}</Text>
 
-      {/* QR Code placeholder - would use a QR library in production */}
-      <div className="my-6 p-4 bg-white rounded-lg border border-gray-200">
-        <div className="w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-          <div className="text-center">
-            <Shield size={48} className="text-primary-500 mx-auto mb-2" />
-            <p className="text-xs text-gray-500">QR Code</p>
-            <p className="text-[10px] text-gray-400 mt-1 font-mono break-all max-w-[160px]">
-              {badge.qrData.substring(0, 32)}...
-            </p>
-          </div>
-        </div>
-      </div>
+      <View className="mb-4">
+        <TierBadge tier={tier} />
+      </View>
 
-      <div className="w-full text-center">
-        <p className="text-gray-600 mb-2">Valid for: {timeLeft} seconds</p>
-        <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden mx-auto">
-          <div
-            className="h-full bg-success-500 rounded-full transition-all duration-1000"
-            style={{ width: `${(timeLeft / 60) * 100}%` }}
-          />
-        </div>
-      </div>
+      <View className="mb-4 rounded-xl bg-white p-4">
+        <QRCode value={qrValue} size={180} />
+      </View>
 
-      <p className="text-gray-500 text-center mt-4 text-sm">
-        Show this to emergency services to verify your credentials
-      </p>
-    </div>
+      <Text className="mb-2 text-sm text-gray-500">
+        {isExpired ? 'This badge has expired' : 'Time remaining'}
+      </Text>
+
+      <Text
+        className={`mb-3 text-2xl font-bold ${isExpired ? 'text-gray-400' : 'text-gray-900'}`}
+      >
+        {formatTimeRemaining(secondsRemaining)}
+      </Text>
+
+      <View className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+        <Animated.View
+          className={`h-full rounded-full ${isExpired ? 'bg-gray-400' : 'bg-success-500'}`}
+          style={{
+            width: progressAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: ['0%', '100%'],
+            }),
+          }}
+        />
+      </View>
+    </View>
   );
 }

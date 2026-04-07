@@ -1,5 +1,6 @@
-import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { Button } from './Button';
+import { View, Text } from 'react-native';
+import { AlertTriangle } from 'lucide-react-native';
+import { Button } from '@/components/ui/Button';
 
 interface ErrorStateProps {
   title?: string;
@@ -9,19 +10,28 @@ interface ErrorStateProps {
 
 export function ErrorState({
   title = 'Something went wrong',
-  message = "We couldn't load this content. Please try again.",
+  message = 'An unexpected error occurred. Please try again.',
   onRetry,
 }: ErrorStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center p-8 flex-1">
-      <div className="w-16 h-16 rounded-full bg-emergency-100 flex items-center justify-center mb-4">
-        <AlertTriangle size={32} className="text-emergency-500" />
-      </div>
-      <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">{title}</h3>
-      <p className="text-gray-500 text-center mb-6 max-w-xs">{message}</p>
+    <View className="flex-1 items-center justify-center px-8 py-12">
+      <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-emergency-100">
+        <AlertTriangle size={32} color="#DC2626" />
+      </View>
+
+      <Text className="mb-2 text-center text-lg font-semibold text-gray-900">
+        {title}
+      </Text>
+
+      <Text className="mb-6 text-center text-sm text-gray-500">
+        {message}
+      </Text>
+
       {onRetry && (
-        <Button onClick={onRetry} variant="secondary" icon={RefreshCw}>Try Again</Button>
+        <Button variant="primary" onPress={onRetry}>
+          Try Again
+        </Button>
       )}
-    </div>
+    </View>
   );
 }

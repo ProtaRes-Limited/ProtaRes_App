@@ -1,6 +1,6 @@
-import { Inbox } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import { Button } from './Button';
+import { View, Text } from 'react-native';
+import type { LucideIcon } from 'lucide-react-native';
+import { Button } from '@/components/ui/Button';
 
 interface EmptyStateProps {
   icon?: LucideIcon;
@@ -10,17 +10,36 @@ interface EmptyStateProps {
   onAction?: () => void;
 }
 
-export function EmptyState({ icon: Icon = Inbox, title, description, actionLabel, onAction }: EmptyStateProps) {
+export function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center p-8 flex-1">
-      <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-        <Icon size={32} className="text-gray-400" />
-      </div>
-      <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">{title}</h3>
-      {description && <p className="text-gray-500 text-center mb-6 max-w-xs">{description}</p>}
-      {actionLabel && onAction && (
-        <Button onClick={onAction} variant="primary">{actionLabel}</Button>
+    <View className="flex-1 items-center justify-center px-8 py-12">
+      {Icon && (
+        <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+          <Icon size={32} color="#9CA3AF" />
+        </View>
       )}
-    </div>
+
+      <Text className="mb-2 text-center text-lg font-semibold text-gray-900">
+        {title}
+      </Text>
+
+      {description && (
+        <Text className="mb-6 text-center text-sm text-gray-500">
+          {description}
+        </Text>
+      )}
+
+      {actionLabel && onAction && (
+        <Button variant="primary" onPress={onAction}>
+          {actionLabel}
+        </Button>
+      )}
+    </View>
   );
 }
