@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, Pressable, Alert } from 'react-native';
+import { View, Text, Pressable, Alert, StyleSheet } from 'react-native';
 import {
   MapPin,
   BarChart3,
@@ -13,6 +13,7 @@ import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/auth';
+import { colors, spacing, borderRadius, fontSize, fontWeight, shadows } from '@/config/theme';
 
 function Toggle({
   value,
@@ -24,14 +25,16 @@ function Toggle({
   return (
     <Pressable
       onPress={onToggle}
-      className={`w-12 h-7 rounded-full justify-center px-0.5 ${
-        value ? 'bg-primary-500' : 'bg-gray-300'
-      }`}
+      style={[
+        styles.toggleBase,
+        value ? styles.toggleOn : styles.toggleOff,
+      ]}
     >
       <View
-        className={`w-6 h-6 rounded-full bg-white shadow ${
-          value ? 'self-end' : 'self-start'
-        }`}
+        style={[
+          styles.toggleKnob,
+          value ? styles.toggleKnobOn : styles.toggleKnobOff,
+        ]}
       />
     </Pressable>
   );
@@ -87,23 +90,23 @@ export default function PrivacyScreen() {
   return (
     <Screen safeArea padded={false}>
       <Header title="Privacy" />
-      <View className="flex-1 px-4">
+      <View style={styles.container}>
         {/* Location */}
-        <Text className="text-lg font-bold text-gray-900 mt-4 mb-3">
+        <Text style={styles.sectionTitleTop}>
           Location
         </Text>
 
-        <Card variant="outlined" className="mb-6">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-3 flex-1">
-              <View className="w-10 h-10 rounded-full bg-primary-100 items-center justify-center">
+        <Card variant="outlined" style={styles.sectionCard}>
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleRowLeft}>
+              <View style={[styles.iconCircle, styles.iconCirclePrimary]}>
                 <MapPin size={20} color="#005EB8" />
               </View>
-              <View className="flex-1">
-                <Text className="text-base font-medium text-gray-900">
+              <View style={styles.toggleTextBlock}>
+                <Text style={styles.toggleLabel}>
                   Location Tracking
                 </Text>
-                <Text className="text-sm text-gray-500">
+                <Text style={styles.toggleDescription}>
                   Required to receive nearby emergency alerts
                 </Text>
               </View>
@@ -115,10 +118,10 @@ export default function PrivacyScreen() {
           </View>
 
           {!locationTracking && (
-            <View className="mt-3 bg-warning-50 rounded-lg p-3">
-              <View className="flex-row items-start gap-2">
+            <View style={styles.warningBox}>
+              <View style={styles.warningRow}>
                 <ShieldAlert size={16} color="#D97706" />
-                <Text className="flex-1 text-xs text-warning-700">
+                <Text style={styles.warningText}>
                   Disabling location tracking means you will not receive
                   emergency alerts based on proximity. You can still use the app
                   for manual reporting.
@@ -129,21 +132,21 @@ export default function PrivacyScreen() {
         </Card>
 
         {/* Consent Preferences */}
-        <Text className="text-lg font-bold text-gray-900 mb-3">
+        <Text style={styles.sectionTitle}>
           Consent Preferences
         </Text>
 
-        <Card variant="outlined" className="mb-6">
-          <View className="flex-row items-center justify-between py-3 border-b border-gray-100">
-            <View className="flex-row items-center gap-3 flex-1">
-              <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center">
+        <Card variant="outlined" style={styles.sectionCard}>
+          <View style={styles.toggleRowBordered}>
+            <View style={styles.toggleRowLeft}>
+              <View style={[styles.iconCircle, styles.iconCircleGray]}>
                 <BarChart3 size={20} color="#005EB8" />
               </View>
-              <View className="flex-1">
-                <Text className="text-base font-medium text-gray-900">
+              <View style={styles.toggleTextBlock}>
+                <Text style={styles.toggleLabel}>
                   Analytics
                 </Text>
-                <Text className="text-sm text-gray-500">
+                <Text style={styles.toggleDescription}>
                   Help us improve by sharing usage data
                 </Text>
               </View>
@@ -154,16 +157,16 @@ export default function PrivacyScreen() {
             />
           </View>
 
-          <View className="flex-row items-center justify-between py-3">
-            <View className="flex-row items-center gap-3 flex-1">
-              <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center">
+          <View style={styles.toggleRowInner}>
+            <View style={styles.toggleRowLeft}>
+              <View style={[styles.iconCircle, styles.iconCircleGray]}>
                 <Mail size={20} color="#005EB8" />
               </View>
-              <View className="flex-1">
-                <Text className="text-base font-medium text-gray-900">
+              <View style={styles.toggleTextBlock}>
+                <Text style={styles.toggleLabel}>
                   Marketing
                 </Text>
-                <Text className="text-sm text-gray-500">
+                <Text style={styles.toggleDescription}>
                   Receive updates about new features
                 </Text>
               </View>
@@ -176,11 +179,11 @@ export default function PrivacyScreen() {
         </Card>
 
         {/* Data Actions */}
-        <Text className="text-lg font-bold text-gray-900 mb-3">
+        <Text style={styles.sectionTitle}>
           Your Data
         </Text>
 
-        <View className="gap-3 mb-8">
+        <View style={styles.dataActions}>
           <Button
             variant="secondary"
             fullWidth
@@ -201,8 +204,8 @@ export default function PrivacyScreen() {
         </View>
 
         {/* GDPR Note */}
-        <Card variant="outlined" className="mb-8">
-          <Text className="text-xs text-gray-500 leading-5">
+        <Card variant="outlined" style={styles.gdprCard}>
+          <Text style={styles.gdprText}>
             Your data is processed in accordance with the UK GDPR and Data
             Protection Act 2018. ProtaRes only collects data necessary for
             emergency response coordination. For more information, please review
@@ -213,3 +216,130 @@ export default function PrivacyScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingHorizontal: spacing[4],
+  },
+  toggleBase: {
+    width: 48,
+    height: 28,
+    borderRadius: borderRadius.full,
+    justifyContent: 'center',
+    paddingHorizontal: spacing[0.5],
+  },
+  toggleOn: {
+    backgroundColor: colors.primary[500],
+  },
+  toggleOff: {
+    backgroundColor: colors.gray[300],
+  },
+  toggleKnob: {
+    width: 24,
+    height: 24,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.white,
+    ...shadows.sm,
+  },
+  toggleKnobOn: {
+    alignSelf: 'flex-end',
+  },
+  toggleKnobOff: {
+    alignSelf: 'flex-start',
+  },
+  sectionTitleTop: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.gray[900],
+    marginTop: spacing[4],
+    marginBottom: spacing[3],
+  },
+  sectionTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.gray[900],
+    marginBottom: spacing[3],
+  },
+  sectionCard: {
+    marginBottom: spacing[6],
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  toggleRowBordered: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing[3],
+    borderBottomWidth: 1,
+    borderColor: colors.gray[100],
+  },
+  toggleRowInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing[3],
+  },
+  toggleRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    flex: 1,
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconCirclePrimary: {
+    backgroundColor: colors.primary[100],
+  },
+  iconCircleGray: {
+    backgroundColor: colors.gray[100],
+  },
+  toggleTextBlock: {
+    flex: 1,
+  },
+  toggleLabel: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.medium,
+    color: colors.gray[900],
+  },
+  toggleDescription: {
+    fontSize: fontSize.sm,
+    color: colors.gray[500],
+  },
+  warningBox: {
+    marginTop: spacing[3],
+    backgroundColor: colors.warning[50],
+    borderRadius: borderRadius.lg,
+    padding: spacing[3],
+  },
+  warningRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing[2],
+  },
+  warningText: {
+    flex: 1,
+    fontSize: fontSize.xs,
+    color: colors.warning[700],
+  },
+  dataActions: {
+    gap: spacing[3],
+    marginBottom: spacing[8],
+  },
+  gdprCard: {
+    marginBottom: spacing[8],
+  },
+  gdprText: {
+    fontSize: fontSize.xs,
+    color: colors.gray[500],
+    lineHeight: 20,
+  },
+});

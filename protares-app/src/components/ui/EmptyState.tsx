@@ -1,6 +1,7 @@
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
+import { colors, spacing, fontSize, fontWeight, borderRadius } from '@/config/theme';
 
 interface EmptyStateProps {
   icon?: LucideIcon;
@@ -18,23 +19,14 @@ export function EmptyState({
   onAction,
 }: EmptyStateProps) {
   return (
-    <View className="flex-1 items-center justify-center px-8 py-12">
+    <View style={styles.container}>
       {Icon && (
-        <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-gray-100">
-          <Icon size={32} color="#9CA3AF" />
+        <View style={styles.iconWrapper}>
+          <Icon size={32} color={colors.gray[400]} />
         </View>
       )}
-
-      <Text className="mb-2 text-center text-lg font-semibold text-gray-900">
-        {title}
-      </Text>
-
-      {description && (
-        <Text className="mb-6 text-center text-sm text-gray-500">
-          {description}
-        </Text>
-      )}
-
+      <Text style={styles.title}>{title}</Text>
+      {description && <Text style={styles.description}>{description}</Text>}
       {actionLabel && onAction && (
         <Button variant="primary" onPress={onAction}>
           {actionLabel}
@@ -43,3 +35,35 @@ export function EmptyState({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing[8],
+    paddingVertical: spacing[12],
+  },
+  iconWrapper: {
+    marginBottom: spacing[4],
+    width: 64,
+    height: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.gray[100],
+  },
+  title: {
+    marginBottom: spacing[2],
+    textAlign: 'center',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
+    color: colors.gray[900],
+  },
+  description: {
+    marginBottom: spacing[6],
+    textAlign: 'center',
+    fontSize: fontSize.sm,
+    color: colors.gray[500],
+  },
+});

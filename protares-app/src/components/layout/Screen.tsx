@@ -1,6 +1,7 @@
-import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { ReactNode } from 'react';
+import { colors, spacing } from '@/config/theme';
 
 interface ScreenProps {
   children: ReactNode;
@@ -17,30 +18,47 @@ export function Screen({
   padded = true,
   safeArea = true,
   keyboardAvoiding = false,
-  bgColor = 'bg-gray-50',
+  bgColor = colors.gray[50],
 }: ScreenProps) {
   const Container = safeArea ? SafeAreaView : View;
+  const contentStyle = [styles.flex1, padded && styles.padded];
+
   const content = scroll ? (
     <ScrollView
-      className={`flex-1 ${padded ? 'px-4' : ''}`}
-      contentContainerStyle={{ flexGrow: 1 }}
+      style={contentStyle}
+      contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
     >
       {children}
     </ScrollView>
   ) : (
-    <View className={`flex-1 ${padded ? 'px-4' : ''}`}>{children}</View>
+    <View style={contentStyle}>{children}</View>
   );
 
   if (keyboardAvoiding) {
     return (
-      <Container className={`flex-1 ${bgColor}`}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
+      <Container style={[styles.flex1, { backgroundColor: bgColor }]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.flex1}
+        >
           {content}
         </KeyboardAvoidingView>
       </Container>
     );
   }
 
-  return <Container className={`flex-1 ${bgColor}`}>{content}</Container>;
+  return <Container style={[styles.flex1, { backgroundColor: bgColor }]}>{content}</Container>;
 }
+
+const styles = StyleSheet.create({
+  flex1: {
+    flex: 1,
+  },
+  padded: {
+    paddingHorizontal: spacing[4],
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+});

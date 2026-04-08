@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
-import { View, Text, Animated } from 'react-native';
+import { View, Text, Animated, StyleSheet } from 'react-native';
 import { ShieldCheck } from 'lucide-react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { TierBadge } from '@/components/ui/Badge';
+import { colors, spacing, borderRadius, fontSize, fontWeight, shadows } from '@/config/theme';
 
 interface GreenBadgeDisplayProps {
   name: string;
@@ -16,34 +17,22 @@ function formatTimeRemaining(seconds: number): string {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;
-  if (hrs > 0) {
-    return `${hrs}h ${mins}m ${secs}s`;
-  }
+  if (hrs > 0) return `${hrs}h ${mins}m ${secs}s`;
   return `${mins}m ${secs}s`;
 }
 
-export function GreenBadgeDisplay({
-  name,
-  tier,
-  qrValue,
-  expiresAt,
-}: GreenBadgeDisplayProps) {
+export function GreenBadgeDisplay({ name, tier, qrValue, expiresAt }: GreenBadgeDisplayProps) {
   const [secondsRemaining, setSecondsRemaining] = useState(() =>
     Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)),
   );
   const totalSeconds = useRef(
     Math.max(1, Math.floor((expiresAt.getTime() - Date.now()) / 1000)),
   ).current;
-  const progressAnim = useRef(
-    new Animated.Value(secondsRemaining / totalSeconds),
-  ).current;
+  const progressAnim = useRef(new Animated.Value(secondsRemaining / totalSeconds)).current;
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setSecondsRemaining((prev) => {
-        const next = Math.max(0, prev - 1);
-        return next;
-      });
+      setSecondsRemaining((prev) => Math.max(0, prev - 1));
     }, 1000);
 
     Animated.timing(progressAnim, {
@@ -53,50 +42,109 @@ export function GreenBadgeDisplay({
     }).start();
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const isExpired = secondsRemaining <= 0;
 
   return (
-    <View className="items-center rounded-2xl bg-white p-6 shadow-md">
-      <View className="mb-3 flex-row items-center gap-2">
-        <ShieldCheck size={28} color={isExpired ? '#9CA3AF' : '#16A34A'} />
-        <Text className="text-xl font-bold text-gray-900">
-          {isExpired ? 'Badge Expired' : 'Verified Responder'}
-        </Text>
+    <View style={styles.container}>
+      <View style={styles.titleRow}>
+        <ShieldCheck size={28} color={isExpired ? colors.gray[400] : colors.success[600]} />
+        <Text style={styles.titleText}>{isExpired ? 'Badge Expired' : 'Verified Responder'}</Text>
       </View>
 
-      <Text className="mb-2 text-lg font-semibold text-gray-800">{name}</Text>
+      <Text style={styles.name}>{name}</Text>
 
-      <View className="mb-4">
+      <View style={styles.tierWrapper}>
         <TierBadge tier={tier} />
       </View>
 
-      <View className="mb-4 rounded-xl bg-white p-4">
+      <View style={styles.qrWrapper}>
         <QRCode value={qrValue} size={180} />
       </View>
 
-      <Text className="mb-2 text-sm text-gray-500">
-        {isExpired ? 'This badge has expired' : 'Time remaining'}
-      </Text>
+      <Text style={styles.label}>{isExpired ? 'This badge has expired' : 'Time remaining'}</Text>
 
-      <Text
-        className={`mb-3 text-2xl font-bold ${isExpired ? 'text-gray-400' : 'text-gray-900'}`}
-      >
+      <Text style={[styles.countdown, isExpired && styles.expiredCountdown]}>
         {formatTimeRemaining(secondsRemaining)}
       </Text>
 
-      <View className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+      <View style={styles.progressBar}>
         <Animated.View
-          className={`h-full rounded-full ${isExpired ? 'bg-gray-400' : 'bg-success-500'}`}
-          style={{
-            width: progressAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: ['0%', '100%'],
-            }),
-          }}
+          style={[
+            styles.progressFill,
+            {
+              backgroundColor: isExpired ? colors.gray[400] : colors.success[500],
+              width: progressAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['0%', '100%'],
+              }),
+            },
+          ]}
         />
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    borderRadius: borderRadius.xl,
+    backgroundColor: colors.white,
+    padding: spacing[6],
+    ...shadows.md,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginBottom: spacing[3],
+  },
+  titleText: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.gray[900],
+  },
+  name: {
+    marginBottom: spacing[2],
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
+    color: colors.gray[800],
+  },
+  tierWrapper: {
+    marginBottom: spacing[4],
+  },
+  qrWrapper: {
+    marginBottom: spacing[4],
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.white,
+    padding: spacing[4],
+  },
+  label: {
+    marginBottom: spacing[2],
+    fontSize: fontSize.sm,
+    color: colors.gray[500],
+  },
+  countdown: {
+    marginBottom: spacing[3],
+    fontSize: fontSize['2xl'],
+    fontWeight: fontWeight.bold,
+    color: colors.gray[900],
+  },
+  expiredCountdown: {
+    color: colors.gray[400],
+  },
+  progressBar: {
+    height: 8,
+    width: '100%',
+    overflow: 'hidden',
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.gray[200],
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: borderRadius.full,
+  },
+});

@@ -1,5 +1,5 @@
-import { View, Text } from 'react-native';
-import { cn } from '@/lib/utils';
+import { View, Text, StyleSheet } from 'react-native';
+import { colors, spacing, borderRadius, fontSize, fontWeight } from '@/config/theme';
 
 type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'tier';
 
@@ -8,30 +8,21 @@ interface BadgeProps {
   variant?: BadgeVariant;
 }
 
-const variantBgStyles: Record<BadgeVariant, string> = {
-  default: 'bg-gray-100',
-  success: 'bg-success-100',
-  warning: 'bg-yellow-100',
-  error: 'bg-emergency-100',
-  info: 'bg-blue-100',
-  tier: 'bg-primary-100',
-};
-
-const variantTextStyles: Record<BadgeVariant, string> = {
-  default: 'text-gray-700',
-  success: 'text-success-700',
-  warning: 'text-yellow-700',
-  error: 'text-emergency-700',
-  info: 'text-blue-700',
-  tier: 'text-primary-700',
+const variantColors: Record<BadgeVariant, { bg: string; text: string }> = {
+  default: { bg: colors.gray[100], text: colors.gray[700] },
+  success: { bg: colors.success[100], text: colors.success[700] },
+  warning: { bg: colors.warning[100], text: colors.warning[700] },
+  error: { bg: colors.emergency[100], text: colors.emergency[700] },
+  info: { bg: colors.primary[100], text: colors.primary[700] },
+  tier: { bg: colors.primary[100], text: colors.primary[700] },
 };
 
 export function Badge({ children, variant = 'default' }: BadgeProps) {
+  const c = variantColors[variant];
+
   return (
-    <View className={cn('self-start rounded-full px-3 py-1', variantBgStyles[variant])}>
-      <Text className={cn('text-xs font-semibold', variantTextStyles[variant])}>
-        {children}
-      </Text>
+    <View style={[styles.badge, { backgroundColor: c.bg }]}>
+      <Text style={[styles.text, { color: c.text }]}>{children}</Text>
     </View>
   );
 }
@@ -49,21 +40,36 @@ const tierLabels: Record<TierLevel, string> = {
   4: 'Tier 4 — Aware Citizen',
 };
 
-const tierColors: Record<TierLevel, { bg: string; text: string }> = {
-  1: { bg: 'bg-emergency-100', text: 'text-emergency-700' },
-  2: { bg: 'bg-primary-100', text: 'text-primary-700' },
-  3: { bg: 'bg-success-100', text: 'text-success-700' },
-  4: { bg: 'bg-gray-100', text: 'text-gray-700' },
+const tierPalette: Record<TierLevel, { bg: string; text: string }> = {
+  1: { bg: colors.emergency[100], text: colors.emergency[700] },
+  2: { bg: colors.primary[100], text: colors.primary[700] },
+  3: { bg: colors.success[100], text: colors.success[700] },
+  4: { bg: colors.gray[100], text: colors.gray[700] },
 };
 
 export function TierBadge({ tier }: TierBadgeProps) {
-  const colors = tierColors[tier];
+  const c = tierPalette[tier];
 
   return (
-    <View className={cn('self-start rounded-full px-3 py-1', colors.bg)}>
-      <Text className={cn('text-xs font-bold', colors.text)}>
-        {tierLabels[tier]}
-      </Text>
+    <View style={[styles.badge, { backgroundColor: c.bg }]}>
+      <Text style={[styles.tierText, { color: c.text }]}>{tierLabels[tier]}</Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  badge: {
+    alignSelf: 'flex-start',
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[1],
+  },
+  text: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
+  },
+  tierText: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.bold,
+  },
+});

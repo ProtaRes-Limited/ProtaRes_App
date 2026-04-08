@@ -1,5 +1,6 @@
-import { Pressable, Text, ActivityIndicator, View } from 'react-native';
+import { Pressable, Text, ActivityIndicator, View, StyleSheet } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
+import { colors, spacing, borderRadius, fontSize, fontWeight } from '@/config/theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'emergency' | 'success' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg' | 'xl';
@@ -16,29 +17,31 @@ interface ButtonProps {
   fullWidth?: boolean;
 }
 
-const variantStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-primary-500 active:bg-primary-600',
-  secondary: 'bg-white border-2 border-primary-500 active:bg-primary-50',
-  emergency: 'bg-emergency-500 active:bg-emergency-600',
-  success: 'bg-success-500 active:bg-success-600',
-  ghost: 'bg-transparent active:bg-gray-100',
-  danger: 'bg-emergency-500 active:bg-emergency-600',
+const variantColors: Record<
+  ButtonVariant,
+  { bg: string; pressedBg: string; text: string; border?: string }
+> = {
+  primary: { bg: colors.primary[500], pressedBg: colors.primary[600], text: colors.white },
+  secondary: {
+    bg: colors.white,
+    pressedBg: colors.primary[50],
+    text: colors.primary[500],
+    border: colors.primary[500],
+  },
+  emergency: { bg: colors.emergency[500], pressedBg: colors.emergency[600], text: colors.white },
+  success: { bg: colors.success[500], pressedBg: colors.success[600], text: colors.white },
+  ghost: { bg: 'transparent', pressedBg: colors.gray[100], text: colors.primary[500] },
+  danger: { bg: colors.emergency[500], pressedBg: colors.emergency[600], text: colors.white },
 };
 
-const variantTextStyles: Record<ButtonVariant, string> = {
-  primary: 'text-white',
-  secondary: 'text-primary-500',
-  emergency: 'text-white',
-  success: 'text-white',
-  ghost: 'text-primary-500',
-  danger: 'text-white',
-};
-
-const sizeStyles: Record<ButtonSize, { button: string; text: string; icon: number }> = {
-  sm: { button: 'h-9 px-3', text: 'text-sm', icon: 16 },
-  md: { button: 'h-11 px-4', text: 'text-base', icon: 20 },
-  lg: { button: 'h-14 px-6', text: 'text-lg', icon: 24 },
-  xl: { button: 'h-16 px-8', text: 'text-xl', icon: 28 },
+const sizeDims: Record<
+  ButtonSize,
+  { height: number; px: number; fontSize: number; iconSize: number }
+> = {
+  sm: { height: 36, px: spacing[3], fontSize: fontSize.sm, iconSize: 16 },
+  md: { height: 44, px: spacing[4], fontSize: fontSize.base, iconSize: 20 },
+  lg: { height: 56, px: spacing[6], fontSize: fontSize.lg, iconSize: 24 },
+  xl: { height: 64, px: spacing[8], fontSize: fontSize.xl, iconSize: 28 },
 };
 
 export function Button({
@@ -53,25 +56,52 @@ export function Button({
   fullWidth = false,
 }: ButtonProps) {
   const isDisabled = disabled || loading;
-  const iconColor = variant === 'secondary' || variant === 'ghost' ? '#005EB8' : '#FFFFFF';
+  const v = variantColors[variant];
+  const s = sizeDims[size];
 
   return (
     <Pressable
       onPress={onPress}
       disabled={isDisabled}
-      className={`flex-row items-center justify-center rounded-lg ${variantStyles[variant]} ${sizeStyles[size].button} ${fullWidth ? 'w-full' : ''} ${isDisabled ? 'opacity-50' : ''}`}
+      style={({ pressed }) => [
+        styles.button,
+        {
+          backgroundColor: pressed ? v.pressedBg : v.bg,
+          height: s.height,
+          paddingHorizontal: s.px,
+          borderWidth: v.border ? 2 : 0,
+          borderColor: v.border,
+          width: fullWidth ? '100%' : undefined,
+          opacity: isDisabled ? 0.5 : 1,
+        },
+      ]}
     >
       {loading ? (
-        <ActivityIndicator color={iconColor} />
+        <ActivityIndicator color={v.text} />
       ) : (
-        <View className="flex-row items-center gap-2">
-          {Icon && iconPosition === 'left' && <Icon size={sizeStyles[size].icon} color={iconColor} />}
-          <Text className={`font-semibold ${variantTextStyles[variant]} ${sizeStyles[size].text}`}>
-            {children}
-          </Text>
-          {Icon && iconPosition === 'right' && <Icon size={sizeStyles[size].icon} color={iconColor} />}
+        <View style={styles.content}>
+          {Icon && iconPosition === 'left' && <Icon size={s.iconSize} color={v.text} />}
+          <Text style={[styles.text, { color: v.text, fontSize: s.fontSize }]}>{children}</Text>
+          {Icon && iconPosition === 'right' && <Icon size={s.iconSize} color={v.text} />}
         </View>
       )}
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: borderRadius.md,
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  text: {
+    fontWeight: fontWeight.semibold,
+  },
+});

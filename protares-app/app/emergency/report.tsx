@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, Pressable, ScrollView } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Heart,
@@ -22,6 +22,7 @@ import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { colors, spacing, borderRadius, fontSize, fontWeight } from '@/config/theme';
 import type { EmergencyType } from '@/types';
 
 interface EmergencyTypeOption {
@@ -38,56 +39,56 @@ const EMERGENCY_TYPES: EmergencyTypeOption[] = [
     label: 'Cardiac Arrest',
     icon: Heart,
     color: '#DA291C',
-    bgColor: 'bg-emergency-100',
+    bgColor: colors.emergency[100],
   },
   {
     type: 'road_accident',
     label: 'Road Accident',
     icon: Car,
     color: '#DA291C',
-    bgColor: 'bg-emergency-100',
+    bgColor: colors.emergency[100],
   },
   {
     type: 'stroke',
     label: 'Stroke',
     icon: Brain,
     color: '#B91C1C',
-    bgColor: 'bg-emergency-100',
+    bgColor: colors.emergency[100],
   },
   {
     type: 'anaphylaxis',
     label: 'Anaphylaxis',
     icon: AlertTriangle,
     color: '#D97706',
-    bgColor: 'bg-warning-100',
+    bgColor: colors.warning[100],
   },
   {
     type: 'breathing_difficulty',
     label: 'Breathing Difficulty',
     icon: Wind,
     color: '#005EB8',
-    bgColor: 'bg-primary-100',
+    bgColor: colors.primary[100],
   },
   {
     type: 'overdose',
     label: 'Overdose',
     icon: Pill,
     color: '#7B2D8E',
-    bgColor: 'bg-purple-100',
+    bgColor: colors.purple[100],
   },
   {
     type: 'burn',
     label: 'Burn',
     icon: Flame,
     color: '#D97706',
-    bgColor: 'bg-warning-100',
+    bgColor: colors.warning[100],
   },
   {
     type: 'other_medical',
     label: 'Other',
     icon: HelpCircle,
     color: '#6B7280',
-    bgColor: 'bg-gray-100',
+    bgColor: colors.gray[100],
   },
 ];
 
@@ -127,31 +128,37 @@ export default function ReportEmergencyScreen() {
     return (
       <Screen safeArea padded={false}>
         <Header title="Report Emergency" onBackPress={() => router.back()} />
-        <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
-          <View className="mt-4 mb-4">
-            <Text className="text-lg font-bold text-gray-900 mb-1">
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <View style={styles.typeHeader}>
+            <Text style={styles.typeHeaderTitle}>
               What type of emergency?
             </Text>
-            <Text className="text-sm text-gray-500">
+            <Text style={styles.typeHeaderSubtitle}>
               Select the type that best describes the situation
             </Text>
           </View>
 
-          <View className="flex-row flex-wrap gap-3 mb-8">
+          <View style={styles.typeGrid}>
             {EMERGENCY_TYPES.map((item) => {
               const Icon = item.icon;
               return (
                 <Pressable
                   key={item.type}
                   onPress={() => handleSelectType(item.type)}
-                  className="w-[48%] bg-white border border-gray-200 rounded-xl p-4 items-center active:bg-gray-50"
+                  style={({ pressed }) => [
+                    styles.typeTile,
+                    pressed && { backgroundColor: colors.gray[50] },
+                  ]}
                 >
                   <View
-                    className={`w-14 h-14 rounded-full items-center justify-center mb-3 ${item.bgColor}`}
+                    style={[
+                      styles.typeIconCircle,
+                      { backgroundColor: item.bgColor },
+                    ]}
                   >
                     <Icon size={28} color={item.color} />
                   </View>
-                  <Text className="text-sm font-semibold text-gray-900 text-center">
+                  <Text style={styles.typeTileLabel}>
                     {item.label}
                   </Text>
                 </Pressable>
@@ -159,12 +166,12 @@ export default function ReportEmergencyScreen() {
             })}
           </View>
 
-          <Card variant="outlined" className="mb-8">
-            <View className="flex-row items-center gap-3">
+          <Card variant="outlined" style={styles.infoCard}>
+            <View style={styles.infoCardRow}>
               <AlertTriangle size={20} color="#DA291C" />
-              <Text className="flex-1 text-sm text-gray-600">
+              <Text style={styles.infoCardText}>
                 If someone is in immediate danger, always call{' '}
-                <Text className="font-bold text-emergency-600">999</Text> first.
+                <Text style={styles.infoCardHighlight}>999</Text> first.
               </Text>
             </View>
           </Card>
@@ -180,13 +187,16 @@ export default function ReportEmergencyScreen() {
     return (
       <Screen safeArea padded={false} keyboardAvoiding>
         <Header title="Report Details" onBackPress={handleBack} />
-        <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {/* Selected Type */}
-          <Card variant="active" className="mt-4 mb-4">
-            <View className="flex-row items-center gap-3">
+          <Card variant="active" style={styles.selectedTypeCard}>
+            <View style={styles.selectedTypeRow}>
               {selectedOption && (
                 <View
-                  className={`w-10 h-10 rounded-full items-center justify-center ${selectedOption.bgColor}`}
+                  style={[
+                    styles.selectedTypeIcon,
+                    { backgroundColor: selectedOption.bgColor },
+                  ]}
                 >
                   <selectedOption.icon
                     size={20}
@@ -194,28 +204,31 @@ export default function ReportEmergencyScreen() {
                   />
                 </View>
               )}
-              <Text className="text-base font-semibold text-gray-900">
+              <Text style={styles.selectedTypeLabel}>
                 {selectedOption?.label}
               </Text>
             </View>
           </Card>
 
           {/* Casualty Count */}
-          <Text className="text-sm font-medium text-gray-700 mb-2">
+          <Text style={styles.fieldLabel}>
             Number of Casualties
           </Text>
-          <View className="flex-row items-center gap-4 mb-6">
+          <View style={styles.casualtyRow}>
             <Pressable
               onPress={() =>
                 setCasualtyCount((c) => Math.max(1, c - 1))
               }
-              className="w-12 h-12 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200"
+              style={({ pressed }) => [
+                styles.casualtyButton,
+                pressed && { backgroundColor: colors.gray[200] },
+              ]}
             >
               <Minus size={20} color="#374151" />
             </Pressable>
 
-            <View className="w-16 h-12 rounded-lg bg-white border border-gray-300 items-center justify-center">
-              <Text className="text-xl font-bold text-gray-900">
+            <View style={styles.casualtyCountBox}>
+              <Text style={styles.casualtyCountText}>
                 {casualtyCount}
               </Text>
             </View>
@@ -224,7 +237,10 @@ export default function ReportEmergencyScreen() {
               onPress={() =>
                 setCasualtyCount((c) => Math.min(20, c + 1))
               }
-              className="w-12 h-12 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200"
+              style={({ pressed }) => [
+                styles.casualtyButton,
+                pressed && { backgroundColor: colors.gray[200] },
+              ]}
             >
               <Plus size={20} color="#374151" />
             </Pressable>
@@ -242,7 +258,7 @@ export default function ReportEmergencyScreen() {
           />
 
           {/* Submit */}
-          <View className="gap-3 mt-4 mb-8">
+          <View style={styles.detailsActions}>
             <Button
               variant="emergency"
               size="lg"
@@ -270,39 +286,39 @@ export default function ReportEmergencyScreen() {
   // Step 3: Submitted Confirmation
   return (
     <Screen>
-      <View className="flex-1 items-center justify-center px-8">
-        <View className="w-20 h-20 rounded-full bg-success-100 items-center justify-center mb-6">
+      <View style={styles.submittedWrapper}>
+        <View style={styles.submittedIconCircle}>
           <CheckCircle size={44} color="#009639" />
         </View>
 
-        <Text className="text-2xl font-bold text-gray-900 text-center mb-3">
+        <Text style={styles.submittedTitle}>
           Report Submitted
         </Text>
 
-        <Text className="text-base text-gray-500 text-center mb-2">
+        <Text style={styles.submittedBody}>
           Your emergency report has been sent to nearby responders.
         </Text>
 
-        <Text className="text-sm text-gray-400 text-center mb-8">
+        <Text style={styles.submittedSubBody}>
           Stay safe and keep clear of any hazards. Emergency services have been
           notified.
         </Text>
 
-        <Card variant="outlined" className="w-full mb-6">
-          <View className="flex-row items-center gap-3">
+        <Card variant="outlined" style={styles.submittedCard}>
+          <View style={styles.submittedCardRow}>
             <Users size={20} color="#005EB8" />
-            <View className="flex-1">
-              <Text className="text-sm font-semibold text-gray-900">
+            <View style={styles.submittedCardContent}>
+              <Text style={styles.submittedCardTitle}>
                 Nearby responders notified
               </Text>
-              <Text className="text-xs text-gray-500">
+              <Text style={styles.submittedCardSubtitle}>
                 Qualified responders in your area are being alerted
               </Text>
             </View>
           </View>
         </Card>
 
-        <View className="w-full gap-3">
+        <View style={styles.submittedActions}>
           <Button
             variant="primary"
             size="lg"
@@ -329,3 +345,190 @@ export default function ReportEmergencyScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  scrollView: {
+    flex: 1,
+    paddingHorizontal: spacing[4],
+  },
+  typeHeader: {
+    marginTop: spacing[4],
+    marginBottom: spacing[4],
+  },
+  typeHeaderTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.gray[900],
+    marginBottom: spacing[1],
+  },
+  typeHeaderSubtitle: {
+    fontSize: fontSize.sm,
+    color: colors.gray[500],
+  },
+  typeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[3],
+    marginBottom: spacing[8],
+  },
+  typeTile: {
+    width: '48%',
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    borderRadius: borderRadius.xl,
+    padding: spacing[4],
+    alignItems: 'center',
+  },
+  typeIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing[3],
+  },
+  typeTileLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: colors.gray[900],
+    textAlign: 'center',
+  },
+  infoCard: {
+    marginBottom: spacing[8],
+  },
+  infoCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+  },
+  infoCardText: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    color: colors.gray[600],
+  },
+  infoCardHighlight: {
+    fontWeight: fontWeight.bold,
+    color: colors.emergency[600],
+  },
+  selectedTypeCard: {
+    marginTop: spacing[4],
+    marginBottom: spacing[4],
+  },
+  selectedTypeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+  },
+  selectedTypeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedTypeLabel: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+    color: colors.gray[900],
+  },
+  fieldLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+    color: colors.gray[700],
+    marginBottom: spacing[2],
+  },
+  casualtyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[4],
+    marginBottom: spacing[6],
+  },
+  casualtyButton: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.gray[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  casualtyCountBox: {
+    width: 64,
+    height: 48,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gray[300],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  casualtyCountText: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.gray[900],
+  },
+  detailsActions: {
+    gap: spacing[3],
+    marginTop: spacing[4],
+    marginBottom: spacing[8],
+  },
+  submittedWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing[8],
+  },
+  submittedIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.success[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing[6],
+  },
+  submittedTitle: {
+    fontSize: fontSize['2xl'],
+    fontWeight: fontWeight.bold,
+    color: colors.gray[900],
+    textAlign: 'center',
+    marginBottom: spacing[3],
+  },
+  submittedBody: {
+    fontSize: fontSize.base,
+    color: colors.gray[500],
+    textAlign: 'center',
+    marginBottom: spacing[2],
+  },
+  submittedSubBody: {
+    fontSize: fontSize.sm,
+    color: colors.gray[400],
+    textAlign: 'center',
+    marginBottom: spacing[8],
+  },
+  submittedCard: {
+    width: '100%',
+    marginBottom: spacing[6],
+  },
+  submittedCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+  },
+  submittedCardContent: {
+    flex: 1,
+  },
+  submittedCardTitle: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: colors.gray[900],
+  },
+  submittedCardSubtitle: {
+    fontSize: fontSize.xs,
+    color: colors.gray[500],
+  },
+  submittedActions: {
+    width: '100%',
+    gap: spacing[3],
+  },
+});

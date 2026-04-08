@@ -1,7 +1,8 @@
 import { Tabs } from 'expo-router';
 import { Home, Bell, Map, Clock, User } from 'lucide-react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useEmergencyStore } from '@/stores/emergency';
-import { View, Text } from 'react-native';
+import { colors, fontWeight } from '@/config/theme';
 
 export default function TabLayout() {
   const pendingAlerts = useEmergencyStore((s) => s.pendingAlerts);
@@ -10,18 +11,18 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#005EB8',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: colors.primary[500],
+        tabBarInactiveTintColor: colors.gray[400],
         tabBarStyle: {
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: colors.gray[200],
           height: 60,
           paddingBottom: 8,
           paddingTop: 8,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '600',
+          fontWeight: fontWeight.semibold,
         },
       }}
     >
@@ -40,10 +41,8 @@ export default function TabLayout() {
             <View>
               <Bell size={size} color={color} />
               {pendingAlerts.length > 0 && (
-                <View className="absolute -top-1 -right-2 w-4 h-4 bg-emergency-500 rounded-full items-center justify-center">
-                  <Text className="text-white text-[9px] font-bold">
-                    {pendingAlerts.length}
-                  </Text>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{pendingAlerts.length}</Text>
                 </View>
               )}
             </View>
@@ -74,3 +73,22 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.emergency[500],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: colors.white,
+    fontSize: 9,
+    fontWeight: fontWeight.bold,
+  },
+});

@@ -1,4 +1,4 @@
-import { View, Text, Pressable, Alert } from 'react-native';
+import { View, Text, Pressable, Alert, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   CreditCard,
@@ -18,6 +18,7 @@ import { TierBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/auth';
 import { TIER_LABELS } from '@/lib/constants';
+import { colors, spacing, borderRadius, fontSize, fontWeight } from '@/config/theme';
 
 interface MenuItemProps {
   icon: LucideIcon;
@@ -31,24 +32,29 @@ function MenuItem({ icon: Icon, label, description, onPress, danger }: MenuItemP
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center gap-3 py-4 border-b border-gray-100 active:bg-gray-50"
+      style={({ pressed }) => [
+        styles.menuItem,
+        pressed && { backgroundColor: colors.gray[50] },
+      ]}
     >
       <View
-        className={`w-10 h-10 rounded-full items-center justify-center ${
-          danger ? 'bg-emergency-100' : 'bg-gray-100'
-        }`}
+        style={[
+          styles.menuIconCircle,
+          danger ? styles.menuIconDanger : styles.menuIconDefault,
+        ]}
       >
         <Icon size={20} color={danger ? '#DA291C' : '#005EB8'} />
       </View>
-      <View className="flex-1">
+      <View style={styles.menuTextBlock}>
         <Text
-          className={`text-base font-medium ${
-            danger ? 'text-emergency-600' : 'text-gray-900'
-          }`}
+          style={[
+            styles.menuLabel,
+            danger ? styles.menuLabelDanger : styles.menuLabelDefault,
+          ]}
         >
           {label}
         </Text>
-        <Text className="text-sm text-gray-500">{description}</Text>
+        <Text style={styles.menuDescription}>{description}</Text>
       </View>
       <ChevronRight size={18} color="#9CA3AF" />
     </Pressable>
@@ -89,26 +95,26 @@ export default function ProfileScreen() {
   return (
     <Screen scroll>
       {/* Profile Header */}
-      <View className="items-center mt-6 mb-6">
+      <View style={styles.profileHeader}>
         <Avatar
           name={user?.fullName}
           source={user?.profilePhotoUrl ?? undefined}
           size="xl"
           online={user?.availability === 'available'}
         />
-        <Text className="text-xl font-bold text-gray-900 mt-3">
+        <Text style={styles.profileName}>
           {user?.fullName || 'Responder'}
         </Text>
-        <Text className="text-sm text-gray-500 mt-0.5">
+        <Text style={styles.profileEmail}>
           {user?.email}
         </Text>
-        <View className="mt-3">
+        <View style={styles.tierBadgeWrapper}>
           <TierBadge tier={tierNumber as 1 | 2 | 3 | 4} />
         </View>
       </View>
 
       {/* Menu Items */}
-      <Card variant="outlined" className="mb-4">
+      <Card variant="outlined" style={styles.menuCard}>
         <MenuItem
           icon={CreditCard}
           label="Green Badge"
@@ -153,7 +159,7 @@ export default function ProfileScreen() {
       </Card>
 
       {/* Sign Out */}
-      <View className="mb-8">
+      <View style={styles.signOutWrapper}>
         <Button
           variant="ghost"
           fullWidth
@@ -166,3 +172,69 @@ export default function ProfileScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    paddingVertical: spacing[4],
+    borderBottomWidth: 1,
+    borderColor: colors.gray[100],
+  },
+  menuIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuIconDanger: {
+    backgroundColor: colors.emergency[100],
+  },
+  menuIconDefault: {
+    backgroundColor: colors.gray[100],
+  },
+  menuTextBlock: {
+    flex: 1,
+  },
+  menuLabel: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.medium,
+  },
+  menuLabelDanger: {
+    color: colors.emergency[600],
+  },
+  menuLabelDefault: {
+    color: colors.gray[900],
+  },
+  menuDescription: {
+    fontSize: fontSize.sm,
+    color: colors.gray[500],
+  },
+  profileHeader: {
+    alignItems: 'center',
+    marginTop: spacing[6],
+    marginBottom: spacing[6],
+  },
+  profileName: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.gray[900],
+    marginTop: spacing[3],
+  },
+  profileEmail: {
+    fontSize: fontSize.sm,
+    color: colors.gray[500],
+    marginTop: spacing[0.5],
+  },
+  tierBadgeWrapper: {
+    marginTop: spacing[3],
+  },
+  menuCard: {
+    marginBottom: spacing[4],
+  },
+  signOutWrapper: {
+    marginBottom: spacing[8],
+  },
+});

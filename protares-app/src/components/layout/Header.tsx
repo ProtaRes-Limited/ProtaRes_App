@@ -1,7 +1,8 @@
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
+import { colors, spacing, fontSize, fontWeight, borderRadius } from '@/config/theme';
 
 interface HeaderProps {
   title: string;
@@ -10,12 +11,7 @@ interface HeaderProps {
   rightAction?: ReactNode;
 }
 
-export function Header({
-  title,
-  showBack = true,
-  onBackPress,
-  rightAction,
-}: HeaderProps) {
+export function Header({ title, showBack = true, onBackPress, rightAction }: HeaderProps) {
   const router = useRouter();
 
   const handleBack = () => {
@@ -27,25 +23,59 @@ export function Header({
   };
 
   return (
-    <View className="h-14 flex-row items-center justify-between border-b border-gray-200 bg-white px-4">
-      <View className="w-10">
+    <View style={styles.container}>
+      <View style={styles.sideSlot}>
         {showBack && (
           <Pressable
             onPress={handleBack}
-            className="h-10 w-10 items-center justify-center rounded-full active:bg-gray-100"
+            style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
           >
-            <ChevronLeft size={24} color="#111827" />
+            <ChevronLeft size={24} color={colors.gray[900]} />
           </Pressable>
         )}
       </View>
 
-      <Text className="flex-1 text-center text-lg font-bold text-gray-900" numberOfLines={1}>
+      <Text style={styles.title} numberOfLines={1}>
         {title}
       </Text>
 
-      <View className="w-10 items-end">
-        {rightAction}
-      </View>
+      <View style={[styles.sideSlot, styles.rightSlot]}>{rightAction}</View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[200],
+    backgroundColor: colors.white,
+    paddingHorizontal: spacing[4],
+  },
+  sideSlot: {
+    width: 40,
+  },
+  rightSlot: {
+    alignItems: 'flex-end',
+  },
+  backButton: {
+    height: 40,
+    width: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: borderRadius.full,
+  },
+  pressed: {
+    backgroundColor: colors.gray[100],
+  },
+  title: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.gray[900],
+  },
+});

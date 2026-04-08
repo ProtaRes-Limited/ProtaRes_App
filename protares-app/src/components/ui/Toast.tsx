@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { Text, Pressable, Animated } from 'react-native';
+import { Text, Pressable, Animated, StyleSheet } from 'react-native';
 import { CheckCircle, XCircle, Info, AlertTriangle, X } from 'lucide-react-native';
-import { cn } from '@/lib/utils';
+import { colors, spacing, borderRadius, fontSize, fontWeight, shadows } from '@/config/theme';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -13,11 +13,11 @@ interface ToastProps {
   onDismiss: () => void;
 }
 
-const toastStyles: Record<ToastType, { bg: string; text: string; color: string }> = {
-  success: { bg: 'bg-success-500', text: 'text-white', color: '#FFFFFF' },
-  error: { bg: 'bg-emergency-500', text: 'text-white', color: '#FFFFFF' },
-  info: { bg: 'bg-blue-500', text: 'text-white', color: '#FFFFFF' },
-  warning: { bg: 'bg-yellow-500', text: 'text-white', color: '#FFFFFF' },
+const toastColors: Record<ToastType, string> = {
+  success: colors.success[500],
+  error: colors.emergency[500],
+  info: colors.primary[500],
+  warning: colors.warning[500],
 };
 
 const toastIcons: Record<ToastType, typeof CheckCircle> = {
@@ -27,31 +27,23 @@ const toastIcons: Record<ToastType, typeof CheckCircle> = {
   warning: AlertTriangle,
 };
 
-export function Toast({
-  visible,
-  type = 'info',
-  message,
-  duration = 3000,
-  onDismiss,
-}: ToastProps) {
+export function Toast({ visible, type = 'info', message, duration = 3000, onDismiss }: ToastProps) {
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const handleDismiss = () => {
+    Animated.parallel([
+      Animated.timing(translateY, { toValue: -100, duration: 200, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start(() => onDismiss());
+  };
+
   useEffect(() => {
     if (visible) {
       Animated.parallel([
-        Animated.spring(translateY, {
-          toValue: 0,
-          useNativeDriver: true,
-          tension: 80,
-          friction: 12,
-        }),
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
+        Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 80, friction: 12 }),
+        Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
       ]).start();
 
       timerRef.current = setTimeout(() => {
@@ -60,49 +52,54 @@ export function Toast({
     }
 
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
-
-  const handleDismiss = () => {
-    Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: -100,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onDismiss();
-    });
-  };
 
   if (!visible) return null;
 
-  const style = toastStyles[type];
+  const bgColor = toastColors[type];
   const Icon = toastIcons[type];
 
   return (
     <Animated.View
-      className={cn(
-        'absolute left-4 right-4 top-12 z-50 flex-row items-center rounded-xl px-4 py-3 shadow-lg',
-        style.bg,
-      )}
-      style={{ transform: [{ translateY }], opacity }}
+      style={[
+        styles.container,
+        { backgroundColor: bgColor, transform: [{ translateY }], opacity },
+      ]}
     >
-      <Icon size={20} color={style.color} />
-      <Text className={cn('ml-3 flex-1 text-sm font-medium', style.text)}>
-        {message}
-      </Text>
-      <Pressable onPress={handleDismiss} className="ml-2">
-        <X size={18} color={style.color} />
+      <Icon size={20} color={colors.white} />
+      <Text style={styles.message}>{message}</Text>
+      <Pressable onPress={handleDismiss} style={styles.closeButton}>
+        <X size={18} color={colors.white} />
       </Pressable>
     </Animated.View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    left: spacing[4],
+    right: spacing[4],
+    top: spacing[12],
+    zIndex: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: borderRadius.xl,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
+    ...shadows.lg,
+  },
+  message: {
+    marginLeft: spacing[3],
+    flex: 1,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+    color: colors.white,
+  },
+  closeButton: {
+    marginLeft: spacing[2],
+  },
+});

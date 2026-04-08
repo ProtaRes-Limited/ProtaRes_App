@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { Shield } from 'lucide-react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { Screen } from '@/components/layout/Screen';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { colors, spacing, borderRadius, fontSize, fontWeight } from '@/config/theme';
 
 interface RegisterFormData {
   firstName: string;
@@ -53,45 +54,35 @@ export default function RegisterScreen() {
     setError(null);
 
     try {
-      // In a real app: await authService.signUp(data)
       await new Promise((resolve) => setTimeout(resolve, 1500));
-
       router.replace('/(tabs)');
-    } catch (err: any) {
-      setError(err?.message || 'Registration failed. Please try again.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Registration failed. Please try again.';
+      setError(message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Screen scroll keyboardAvoiding bgColor="bg-white">
-      <View className="py-8">
-        {/* Branding */}
-        <View className="items-center mb-8">
-          <View className="w-14 h-14 rounded-xl bg-primary-500 items-center justify-center mb-3">
-            <Shield size={30} color="#FFFFFF" />
+    <Screen scroll keyboardAvoiding bgColor={colors.white}>
+      <View style={styles.container}>
+        <View style={styles.branding}>
+          <View style={styles.logoWrapper}>
+            <Shield size={30} color={colors.white} />
           </View>
-          <Text className="text-2xl font-bold text-primary-500 mb-1">
-            Join ProtaRes
-          </Text>
-          <Text className="text-sm text-gray-500 text-center">
-            Register as a community emergency responder
-          </Text>
+          <Text style={styles.appName}>Join ProtaRes</Text>
+          <Text style={styles.tagline}>Register as a community emergency responder</Text>
         </View>
 
-        {/* Error */}
         {error && (
-          <View className="bg-emergency-50 border border-emergency-200 rounded-lg p-4 mb-6">
-            <Text className="text-emergency-600 text-sm text-center">
-              {error}
-            </Text>
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
 
-        {/* Form */}
-        <View className="flex-row gap-3 mb-0">
-          <View className="flex-1">
+        <View style={styles.nameRow}>
+          <View style={styles.nameField}>
             <Controller
               control={control}
               name="firstName"
@@ -108,7 +99,7 @@ export default function RegisterScreen() {
               )}
             />
           </View>
-          <View className="flex-1">
+          <View style={styles.nameField}>
             <Controller
               control={control}
               name="lastName"
@@ -177,10 +168,7 @@ export default function RegisterScreen() {
           name="password"
           rules={{
             required: 'Password is required',
-            minLength: {
-              value: 8,
-              message: 'Password must be at least 8 characters',
-            },
+            minLength: { value: 8, message: 'Password must be at least 8 characters' },
           }}
           render={({ field: { onChange, value } }) => (
             <Input
@@ -199,8 +187,7 @@ export default function RegisterScreen() {
           name="confirmPassword"
           rules={{
             required: 'Please confirm your password',
-            validate: (val) =>
-              val === password || 'Passwords do not match',
+            validate: (val) => val === password || 'Passwords do not match',
           }}
           render={({ field: { onChange, value } }) => (
             <Input
@@ -214,33 +201,16 @@ export default function RegisterScreen() {
           )}
         />
 
-        {/* Terms Checkbox */}
         <Controller
           control={control}
           name="termsAccepted"
           render={({ field: { onChange, value } }) => (
-            <Pressable
-              onPress={() => onChange(!value)}
-              className="flex-row items-start gap-3 mb-3"
-            >
-              <View
-                className={`w-5 h-5 mt-0.5 rounded border-2 items-center justify-center ${
-                  value
-                    ? 'bg-primary-500 border-primary-500'
-                    : 'border-gray-300 bg-white'
-                }`}
-              >
-                {value && (
-                  <Text className="text-white text-xs font-bold">
-                    ✓
-                  </Text>
-                )}
+            <Pressable onPress={() => onChange(!value)} style={styles.checkboxRow}>
+              <View style={[styles.checkbox, value ? styles.checkboxChecked : styles.checkboxUnchecked]}>
+                {value && <Text style={styles.checkmark}>✓</Text>}
               </View>
-              <Text className="flex-1 text-sm text-gray-600">
-                I agree to the{' '}
-                <Text className="text-primary-500 font-medium">
-                  Terms of Service
-                </Text>
+              <Text style={styles.checkboxLabel}>
+                I agree to the <Text style={styles.linkText}>Terms of Service</Text>
               </Text>
             </Pressable>
           )}
@@ -250,54 +220,26 @@ export default function RegisterScreen() {
           control={control}
           name="privacyAccepted"
           render={({ field: { onChange, value } }) => (
-            <Pressable
-              onPress={() => onChange(!value)}
-              className="flex-row items-start gap-3 mb-8"
-            >
-              <View
-                className={`w-5 h-5 mt-0.5 rounded border-2 items-center justify-center ${
-                  value
-                    ? 'bg-primary-500 border-primary-500'
-                    : 'border-gray-300 bg-white'
-                }`}
-              >
-                {value && (
-                  <Text className="text-white text-xs font-bold">
-                    ✓
-                  </Text>
-                )}
+            <Pressable onPress={() => onChange(!value)} style={[styles.checkboxRow, styles.marginBottom8]}>
+              <View style={[styles.checkbox, value ? styles.checkboxChecked : styles.checkboxUnchecked]}>
+                {value && <Text style={styles.checkmark}>✓</Text>}
               </View>
-              <Text className="flex-1 text-sm text-gray-600">
-                I have read and accept the{' '}
-                <Text className="text-primary-500 font-medium">
-                  Privacy Policy
-                </Text>
+              <Text style={styles.checkboxLabel}>
+                I have read and accept the <Text style={styles.linkText}>Privacy Policy</Text>
               </Text>
             </Pressable>
           )}
         />
 
-        {/* Submit */}
-        <Button
-          variant="primary"
-          size="lg"
-          fullWidth
-          onPress={handleSubmit(onSubmit)}
-          loading={loading}
-        >
+        <Button variant="primary" size="lg" fullWidth onPress={handleSubmit(onSubmit)} loading={loading}>
           Create Account
         </Button>
 
-        {/* Login Link */}
-        <View className="flex-row items-center justify-center mt-6 mb-8">
-          <Text className="text-gray-500 text-sm">
-            Already have an account?{' '}
-          </Text>
+        <View style={styles.loginLinkRow}>
+          <Text style={styles.loginLinkLabel}>Already have an account? </Text>
           <Link href="/(auth)/login" asChild>
             <Pressable>
-              <Text className="text-primary-500 text-sm font-semibold">
-                Sign In
-              </Text>
+              <Text style={styles.loginLinkAction}>Sign In</Text>
             </Pressable>
           </Link>
         </View>
@@ -305,3 +247,109 @@ export default function RegisterScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    paddingVertical: spacing[8],
+  },
+  branding: {
+    alignItems: 'center',
+    marginBottom: spacing[8],
+  },
+  logoWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: borderRadius.xl,
+    backgroundColor: colors.primary[500],
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing[3],
+  },
+  appName: {
+    fontSize: fontSize['2xl'],
+    fontWeight: fontWeight.bold,
+    color: colors.primary[500],
+    marginBottom: spacing[1],
+  },
+  tagline: {
+    fontSize: fontSize.sm,
+    color: colors.gray[500],
+    textAlign: 'center',
+  },
+  errorBox: {
+    backgroundColor: colors.emergency[50],
+    borderWidth: 1,
+    borderColor: colors.emergency[200],
+    borderRadius: borderRadius.md,
+    padding: spacing[4],
+    marginBottom: spacing[6],
+  },
+  errorText: {
+    color: colors.emergency[600],
+    fontSize: fontSize.sm,
+    textAlign: 'center',
+  },
+  nameRow: {
+    flexDirection: 'row',
+    gap: spacing[3],
+  },
+  nameField: {
+    flex: 1,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing[3],
+    marginBottom: spacing[3],
+  },
+  marginBottom8: {
+    marginBottom: spacing[8],
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    marginTop: 2,
+    borderRadius: borderRadius.sm,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: colors.primary[500],
+    borderColor: colors.primary[500],
+  },
+  checkboxUnchecked: {
+    borderColor: colors.gray[300],
+    backgroundColor: colors.white,
+  },
+  checkmark: {
+    color: colors.white,
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.bold,
+  },
+  checkboxLabel: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    color: colors.gray[600],
+  },
+  linkText: {
+    color: colors.primary[500],
+    fontWeight: fontWeight.medium,
+  },
+  loginLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing[6],
+    marginBottom: spacing[8],
+  },
+  loginLinkLabel: {
+    color: colors.gray[500],
+    fontSize: fontSize.sm,
+  },
+  loginLinkAction: {
+    color: colors.primary[500],
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+  },
+});

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, Pressable, FlatList } from 'react-native';
+import { View, Text, Pressable, FlatList, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Bell,
@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useEmergencyStore } from '@/stores/emergency';
 import { EMERGENCY_TYPE_LABELS } from '@/lib/constants';
+import { colors, spacing, borderRadius, fontSize, fontWeight } from '@/config/theme';
 import type { Emergency } from '@/types';
 
 type FilterTab = 'all' | 'active';
@@ -63,17 +64,17 @@ export default function AlertsScreen() {
   const renderAlert = ({ item }: { item: Emergency }) => (
     <Card
       variant="outlined"
-      className="mb-3"
+      style={styles.alertCard}
       onPress={() => router.push(`/emergency/${item.id}`)}
     >
-      <View className="flex-row items-start gap-3">
-        <View className="w-10 h-10 rounded-full bg-emergency-100 items-center justify-center mt-0.5">
+      <View style={styles.alertRow}>
+        <View style={styles.alertIconCircle}>
           <AlertTriangle size={20} color="#DA291C" />
         </View>
 
-        <View className="flex-1">
-          <View className="flex-row items-center justify-between mb-1">
-            <Text className="text-base font-semibold text-gray-900">
+        <View style={styles.alertContent}>
+          <View style={styles.alertHeader}>
+            <Text style={styles.alertTitle}>
               {EMERGENCY_TYPE_LABELS[item.emergencyType]}
             </Text>
             <Badge variant={SEVERITY_VARIANT[item.severity] ?? 'default'}>
@@ -81,22 +82,22 @@ export default function AlertsScreen() {
             </Badge>
           </View>
 
-          <View className="flex-row items-center gap-1.5 mb-1">
+          <View style={styles.metaRow}>
             <MapPin size={14} color="#6B7280" />
-            <Text className="text-sm text-gray-600 flex-1" numberOfLines={1}>
+            <Text style={styles.locationText} numberOfLines={1}>
               {item.locationAddress || 'Unknown location'}
             </Text>
           </View>
 
-          <View className="flex-row items-center gap-1.5">
+          <View style={styles.metaRowCompact}>
             <Clock size={14} color="#6B7280" />
-            <Text className="text-xs text-gray-500">
+            <Text style={styles.metaText}>
               {formatTimeAgo(item.createdAt)}
             </Text>
             {item.distanceMeters != null && (
               <>
-                <Text className="text-xs text-gray-400 mx-1">|</Text>
-                <Text className="text-xs text-gray-500">
+                <Text style={styles.metaSeparator}>|</Text>
+                <Text style={styles.metaText}>
                   {item.distanceMeters < 1000
                     ? `${item.distanceMeters}m away`
                     : `${(item.distanceMeters / 1000).toFixed(1)}km away`}
@@ -112,27 +113,29 @@ export default function AlertsScreen() {
   return (
     <Screen>
       {/* Header */}
-      <View className="flex-row items-center justify-between mt-4 mb-4">
-        <Text className="text-2xl font-bold text-gray-900">Alerts</Text>
-        <View className="flex-row items-center gap-1">
+      <View style={styles.headerRow}>
+        <Text style={styles.headerTitle}>Alerts</Text>
+        <View style={styles.headerIconRow}>
           <Filter size={16} color="#6B7280" />
         </View>
       </View>
 
       {/* Filter Tabs */}
-      <View className="flex-row gap-2 mb-4">
+      <View style={styles.filterTabs}>
         <Pressable
           onPress={() => setFilter('all')}
-          className={`px-4 py-2 rounded-full ${
-            filter === 'all'
-              ? 'bg-primary-500'
-              : 'bg-gray-100'
-          }`}
+          style={[
+            styles.filterTab,
+            filter === 'all' ? styles.filterTabActive : styles.filterTabInactive,
+          ]}
         >
           <Text
-            className={`text-sm font-semibold ${
-              filter === 'all' ? 'text-white' : 'text-gray-600'
-            }`}
+            style={[
+              styles.filterTabText,
+              filter === 'all'
+                ? styles.filterTabTextActive
+                : styles.filterTabTextInactive,
+            ]}
           >
             All
           </Text>
@@ -140,16 +143,18 @@ export default function AlertsScreen() {
 
         <Pressable
           onPress={() => setFilter('active')}
-          className={`px-4 py-2 rounded-full ${
-            filter === 'active'
-              ? 'bg-primary-500'
-              : 'bg-gray-100'
-          }`}
+          style={[
+            styles.filterTab,
+            filter === 'active' ? styles.filterTabActive : styles.filterTabInactive,
+          ]}
         >
           <Text
-            className={`text-sm font-semibold ${
-              filter === 'active' ? 'text-white' : 'text-gray-600'
-            }`}
+            style={[
+              styles.filterTabText,
+              filter === 'active'
+                ? styles.filterTabTextActive
+                : styles.filterTabTextInactive,
+            ]}
           >
             Active
           </Text>
@@ -175,3 +180,105 @@ export default function AlertsScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing[4],
+    marginBottom: spacing[4],
+  },
+  headerTitle: {
+    fontSize: fontSize['2xl'],
+    fontWeight: fontWeight.bold,
+    color: colors.gray[900],
+  },
+  headerIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+  },
+  filterTabs: {
+    flexDirection: 'row',
+    gap: spacing[2],
+    marginBottom: spacing[4],
+  },
+  filterTab: {
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[2],
+    borderRadius: borderRadius.full,
+  },
+  filterTabActive: {
+    backgroundColor: colors.primary[500],
+  },
+  filterTabInactive: {
+    backgroundColor: colors.gray[100],
+  },
+  filterTabText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+  },
+  filterTabTextActive: {
+    color: colors.white,
+  },
+  filterTabTextInactive: {
+    color: colors.gray[600],
+  },
+  alertCard: {
+    marginBottom: spacing[3],
+  },
+  alertRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing[3],
+  },
+  alertIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.emergency[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing[0.5],
+  },
+  alertContent: {
+    flex: 1,
+  },
+  alertHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing[1],
+  },
+  alertTitle: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+    color: colors.gray[900],
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1.5],
+    marginBottom: spacing[1],
+  },
+  metaRowCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1.5],
+  },
+  locationText: {
+    fontSize: fontSize.sm,
+    color: colors.gray[600],
+    flex: 1,
+  },
+  metaText: {
+    fontSize: fontSize.xs,
+    color: colors.gray[500],
+  },
+  metaSeparator: {
+    fontSize: fontSize.xs,
+    color: colors.gray[400],
+    marginHorizontal: spacing[1],
+  },
+});

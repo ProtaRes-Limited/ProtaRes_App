@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import {
   ShieldCheck,
   RefreshCw,
@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge, TierBadge } from '@/components/ui/Badge';
 import { useAuthStore } from '@/stores/auth';
 import { TIER_LABELS, TIER_COLORS } from '@/lib/constants';
+import { colors, spacing, borderRadius, fontSize, fontWeight } from '@/config/theme';
 import type { GreenBadge } from '@/types';
 
 export default function GreenBadgeScreen() {
@@ -57,37 +58,39 @@ export default function GreenBadgeScreen() {
   return (
     <Screen safeArea padded={false}>
       <Header title="Green Badge" />
-      <View className="flex-1 px-4 items-center">
+      <View style={styles.container}>
         {/* Badge Card */}
-        <Card variant="elevated" className="mt-6 w-full">
+        <Card variant="elevated" style={styles.badgeCard}>
           {/* Badge Header */}
-          <View className="items-center pb-4 border-b border-gray-100 mb-4">
+          <View style={styles.badgeHeader}>
             <View
-              className="w-16 h-16 rounded-full items-center justify-center mb-3"
-              style={{ backgroundColor: `${tierColor}20` }}
+              style={[
+                styles.badgeIconCircle,
+                { backgroundColor: `${tierColor}20` },
+              ]}
             >
               <ShieldCheck size={36} color={tierColor} />
             </View>
-            <Text className="text-xl font-bold text-gray-900">
+            <Text style={styles.badgeName}>
               {mockBadge.name}
             </Text>
-            <Text className="text-sm text-gray-500 mt-1">
+            <Text style={styles.badgeSubtitle}>
               Verified Emergency Responder
             </Text>
-            <View className="mt-2">
+            <View style={styles.tierBadgeWrapper}>
               <TierBadge tier={tierNumber as 1 | 2 | 3 | 4} />
             </View>
           </View>
 
           {/* QR Code Placeholder */}
-          <View className="items-center py-6">
-            <View className="w-52 h-52 bg-gray-100 rounded-2xl items-center justify-center border-2 border-dashed border-gray-300">
-              <View className="items-center">
+          <View style={styles.qrWrapper}>
+            <View style={styles.qrBox}>
+              <View style={styles.qrInner}>
                 <ShieldCheck size={48} color={tierColor} />
-                <Text className="text-xs text-gray-400 mt-2 text-center">
+                <Text style={styles.qrTitle}>
                   QR Code
                 </Text>
-                <Text className="text-[10px] text-gray-300 mt-1 text-center px-4">
+                <Text style={styles.qrSubtitle}>
                   Scan to verify responder credentials
                 </Text>
               </View>
@@ -95,44 +98,44 @@ export default function GreenBadgeScreen() {
           </View>
 
           {/* Auto-refresh Timer */}
-          <View className="flex-row items-center justify-center gap-2 pb-2">
+          <View style={styles.refreshRow}>
             <RefreshCw size={14} color="#9CA3AF" />
-            <Text className="text-xs text-gray-500">
+            <Text style={styles.refreshText}>
               Auto-refreshes in{' '}
-              <Text className="font-semibold">{refreshCountdown}s</Text>
+              <Text style={styles.refreshCount}>{refreshCountdown}s</Text>
             </Text>
           </View>
         </Card>
 
         {/* Badge Details */}
-        <Card variant="outlined" className="mt-4 w-full">
-          <View className="gap-3">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-gray-500">Status</Text>
+        <Card variant="outlined" style={styles.detailsCard}>
+          <View style={styles.detailsList}>
+            <View style={styles.detailsRow}>
+              <Text style={styles.detailsLabel}>Status</Text>
               <Badge variant={mockBadge.verified ? 'success' : 'warning'}>
                 {mockBadge.verified ? 'Verified' : 'Pending'}
               </Badge>
             </View>
 
-            <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-gray-500">Tier</Text>
-              <Text className="text-sm font-medium text-gray-900">
+            <View style={styles.detailsRow}>
+              <Text style={styles.detailsLabel}>Tier</Text>
+              <Text style={styles.detailsValue}>
                 {user?.tier ? TIER_LABELS[user.tier] : 'Unverified'}
               </Text>
             </View>
 
             {mockBadge.credentialType && (
-              <View className="flex-row items-center justify-between">
-                <Text className="text-sm text-gray-500">Credential</Text>
-                <Text className="text-sm font-medium text-gray-900">
+              <View style={styles.detailsRow}>
+                <Text style={styles.detailsLabel}>Credential</Text>
+                <Text style={styles.detailsValue}>
                   {mockBadge.credentialType} Registered
                 </Text>
               </View>
             )}
 
-            <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-gray-500">Responder ID</Text>
-              <Text className="text-sm font-mono text-gray-600">
+            <View style={styles.detailsRow}>
+              <Text style={styles.detailsLabel}>Responder ID</Text>
+              <Text style={styles.detailsMono}>
                 {mockBadge.responderId.slice(0, 12)}...
               </Text>
             </View>
@@ -140,8 +143,8 @@ export default function GreenBadgeScreen() {
         </Card>
 
         {/* Instructions */}
-        <View className="mt-4 px-4 mb-8">
-          <Text className="text-xs text-gray-400 text-center">
+        <View style={styles.instructionsWrapper}>
+          <Text style={styles.instructionsText}>
             Show this badge to emergency services or bystanders to verify your
             credentials. The QR code refreshes automatically for security.
           </Text>
@@ -150,3 +153,124 @@ export default function GreenBadgeScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingHorizontal: spacing[4],
+    alignItems: 'center',
+  },
+  badgeCard: {
+    marginTop: spacing[6],
+    width: '100%',
+  },
+  badgeHeader: {
+    alignItems: 'center',
+    paddingBottom: spacing[4],
+    borderBottomWidth: 1,
+    borderColor: colors.gray[100],
+    marginBottom: spacing[4],
+  },
+  badgeIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing[3],
+  },
+  badgeName: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.gray[900],
+  },
+  badgeSubtitle: {
+    fontSize: fontSize.sm,
+    color: colors.gray[500],
+    marginTop: spacing[1],
+  },
+  tierBadgeWrapper: {
+    marginTop: spacing[2],
+  },
+  qrWrapper: {
+    alignItems: 'center',
+    paddingVertical: spacing[6],
+  },
+  qrBox: {
+    width: 208,
+    height: 208,
+    backgroundColor: colors.gray[100],
+    borderRadius: borderRadius['2xl'],
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: colors.gray[300],
+  },
+  qrInner: {
+    alignItems: 'center',
+  },
+  qrTitle: {
+    fontSize: fontSize.xs,
+    color: colors.gray[400],
+    marginTop: spacing[2],
+    textAlign: 'center',
+  },
+  qrSubtitle: {
+    fontSize: 10,
+    color: colors.gray[300],
+    marginTop: spacing[1],
+    textAlign: 'center',
+    paddingHorizontal: spacing[4],
+  },
+  refreshRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[2],
+    paddingBottom: spacing[2],
+  },
+  refreshText: {
+    fontSize: fontSize.xs,
+    color: colors.gray[500],
+  },
+  refreshCount: {
+    fontWeight: fontWeight.semibold,
+  },
+  detailsCard: {
+    marginTop: spacing[4],
+    width: '100%',
+  },
+  detailsList: {
+    gap: spacing[3],
+  },
+  detailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  detailsLabel: {
+    fontSize: fontSize.sm,
+    color: colors.gray[500],
+  },
+  detailsValue: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+    color: colors.gray[900],
+  },
+  detailsMono: {
+    fontSize: fontSize.sm,
+    fontFamily: 'monospace',
+    color: colors.gray[600],
+  },
+  instructionsWrapper: {
+    marginTop: spacing[4],
+    paddingHorizontal: spacing[4],
+    marginBottom: spacing[8],
+  },
+  instructionsText: {
+    fontSize: fontSize.xs,
+    color: colors.gray[400],
+    textAlign: 'center',
+  },
+});

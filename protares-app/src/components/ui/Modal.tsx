@@ -1,6 +1,7 @@
-import { Modal as RNModal, View, Text, Pressable } from 'react-native';
-import { X } from 'lucide-react-native';
+import { Modal as RNModal, View, Text, Pressable, StyleSheet } from 'react-native';
 import type { ReactNode } from 'react';
+import { X } from 'lucide-react-native';
+import { colors, spacing, borderRadius, fontSize, fontWeight } from '@/config/theme';
 
 interface ModalProps {
   visible: boolean;
@@ -11,44 +12,66 @@ interface ModalProps {
 
 export function Modal({ visible, onClose, title, children }: ModalProps) {
   return (
-    <RNModal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <Pressable
-        className="flex-1 items-center justify-center bg-black/50 px-6"
-        onPress={onClose}
-      >
-        <Pressable
-          className="w-full max-w-lg rounded-2xl bg-white p-6"
-          onPress={() => {}}
-        >
+    <RNModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.backdrop} onPress={onClose}>
+        <Pressable style={styles.content} onPress={() => {}}>
           {title && (
-            <View className="mb-4 flex-row items-center justify-between">
-              <Text className="text-lg font-bold text-gray-900">{title}</Text>
-              <Pressable
-                onPress={onClose}
-                className="h-8 w-8 items-center justify-center rounded-full active:bg-gray-100"
-              >
-                <X size={20} color="#6B7280" />
+            <View style={styles.header}>
+              <Text style={styles.title}>{title}</Text>
+              <Pressable style={styles.closeButton} onPress={onClose}>
+                <X size={20} color={colors.gray[500]} />
               </Pressable>
             </View>
           )}
-
           {!title && (
-            <Pressable
-              onPress={onClose}
-              className="absolute right-4 top-4 z-10 h-8 w-8 items-center justify-center rounded-full active:bg-gray-100"
-            >
-              <X size={20} color="#6B7280" />
+            <Pressable style={[styles.closeButton, styles.absoluteClose]} onPress={onClose}>
+              <X size={20} color={colors.gray[500]} />
             </Pressable>
           )}
-
           {children}
         </Pressable>
       </Pressable>
     </RNModal>
   );
 }
+
+const styles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: spacing[6],
+  },
+  content: {
+    width: '100%',
+    maxWidth: 500,
+    borderRadius: borderRadius.xl,
+    backgroundColor: colors.white,
+    padding: spacing[6],
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing[4],
+  },
+  title: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.gray[900],
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: borderRadius.full,
+  },
+  absoluteClose: {
+    position: 'absolute',
+    top: spacing[4],
+    right: spacing[4],
+    zIndex: 10,
+  },
+});

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Volume2,
@@ -13,6 +13,7 @@ import type { LucideIcon } from 'lucide-react-native';
 import { Screen } from '@/components/layout/Screen';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
+import { colors, spacing, borderRadius, fontSize, fontWeight, shadows } from '@/config/theme';
 
 function Toggle({
   value,
@@ -24,14 +25,16 @@ function Toggle({
   return (
     <Pressable
       onPress={onToggle}
-      className={`w-12 h-7 rounded-full justify-center px-0.5 ${
-        value ? 'bg-primary-500' : 'bg-gray-300'
-      }`}
+      style={[
+        styles.toggleBase,
+        value ? styles.toggleOn : styles.toggleOff,
+      ]}
     >
       <View
-        className={`w-6 h-6 rounded-full bg-white shadow ${
-          value ? 'self-end' : 'self-start'
-        }`}
+        style={[
+          styles.toggleKnob,
+          value ? styles.toggleKnobOn : styles.toggleKnobOff,
+        ]}
       />
     </Pressable>
   );
@@ -53,14 +56,17 @@ function SettingsNavItem({
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center gap-3 py-4 border-b border-gray-100 active:bg-gray-50"
+      style={({ pressed }) => [
+        styles.navItem,
+        pressed && { backgroundColor: colors.gray[50] },
+      ]}
     >
-      <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center">
+      <View style={styles.navIconCircle}>
         <Icon size={20} color="#005EB8" />
       </View>
-      <View className="flex-1">
-        <Text className="text-base font-medium text-gray-900">{label}</Text>
-        <Text className="text-sm text-gray-500">{description}</Text>
+      <View style={styles.navTextBlock}>
+        <Text style={styles.navLabel}>{label}</Text>
+        <Text style={styles.navDescription}>{description}</Text>
       </View>
       <ChevronRight size={18} color="#9CA3AF" />
     </Pressable>
@@ -75,23 +81,23 @@ export default function SettingsScreen() {
   return (
     <Screen safeArea padded={false}>
       <Header title="Settings" />
-      <View className="flex-1 px-4">
+      <View style={styles.container}>
         {/* Alert Preferences */}
-        <Text className="text-lg font-bold text-gray-900 mt-4 mb-3">
+        <Text style={styles.sectionTitleTop}>
           Alert Preferences
         </Text>
 
-        <Card variant="outlined" className="mb-6">
-          <View className="flex-row items-center justify-between py-3 border-b border-gray-100">
-            <View className="flex-row items-center gap-3 flex-1">
-              <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center">
+        <Card variant="outlined" style={styles.sectionCard}>
+          <View style={styles.toggleRowBordered}>
+            <View style={styles.toggleRowLeft}>
+              <View style={styles.toggleIconCircle}>
                 <Volume2 size={20} color="#005EB8" />
               </View>
-              <View className="flex-1">
-                <Text className="text-base font-medium text-gray-900">
+              <View style={styles.toggleTextBlock}>
+                <Text style={styles.toggleLabel}>
                   Sound
                 </Text>
-                <Text className="text-sm text-gray-500">
+                <Text style={styles.toggleDescription}>
                   Play alert sounds for emergencies
                 </Text>
               </View>
@@ -102,16 +108,16 @@ export default function SettingsScreen() {
             />
           </View>
 
-          <View className="flex-row items-center justify-between py-3">
-            <View className="flex-row items-center gap-3 flex-1">
-              <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center">
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleRowLeft}>
+              <View style={styles.toggleIconCircle}>
                 <Vibrate size={20} color="#005EB8" />
               </View>
-              <View className="flex-1">
-                <Text className="text-base font-medium text-gray-900">
+              <View style={styles.toggleTextBlock}>
+                <Text style={styles.toggleLabel}>
                   Vibration
                 </Text>
-                <Text className="text-sm text-gray-500">
+                <Text style={styles.toggleDescription}>
                   Haptic feedback for alerts
                 </Text>
               </View>
@@ -124,9 +130,9 @@ export default function SettingsScreen() {
         </Card>
 
         {/* Navigation Items */}
-        <Text className="text-lg font-bold text-gray-900 mb-3">General</Text>
+        <Text style={styles.sectionTitle}>General</Text>
 
-        <Card variant="outlined" className="mb-6">
+        <Card variant="outlined" style={styles.sectionCard}>
           <SettingsNavItem
             icon={Bell}
             label="Notifications"
@@ -152,11 +158,11 @@ export default function SettingsScreen() {
         </Card>
 
         {/* App Info */}
-        <View className="items-center mb-8">
-          <Text className="text-xs text-gray-400">
+        <View style={styles.appInfo}>
+          <Text style={styles.appInfoVersion}>
             ProtaRes v1.0.0
           </Text>
-          <Text className="text-xs text-gray-300 mt-1">
+          <Text style={styles.appInfoTagline}>
             Community Emergency Response Network
           </Text>
         </View>
@@ -164,3 +170,133 @@ export default function SettingsScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingHorizontal: spacing[4],
+  },
+  toggleBase: {
+    width: 48,
+    height: 28,
+    borderRadius: borderRadius.full,
+    justifyContent: 'center',
+    paddingHorizontal: spacing[0.5],
+  },
+  toggleOn: {
+    backgroundColor: colors.primary[500],
+  },
+  toggleOff: {
+    backgroundColor: colors.gray[300],
+  },
+  toggleKnob: {
+    width: 24,
+    height: 24,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.white,
+    ...shadows.sm,
+  },
+  toggleKnobOn: {
+    alignSelf: 'flex-end',
+  },
+  toggleKnobOff: {
+    alignSelf: 'flex-start',
+  },
+  navItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    paddingVertical: spacing[4],
+    borderBottomWidth: 1,
+    borderColor: colors.gray[100],
+  },
+  navIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.gray[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navTextBlock: {
+    flex: 1,
+  },
+  navLabel: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.medium,
+    color: colors.gray[900],
+  },
+  navDescription: {
+    fontSize: fontSize.sm,
+    color: colors.gray[500],
+  },
+  sectionTitleTop: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.gray[900],
+    marginTop: spacing[4],
+    marginBottom: spacing[3],
+  },
+  sectionTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.gray[900],
+    marginBottom: spacing[3],
+  },
+  sectionCard: {
+    marginBottom: spacing[6],
+  },
+  toggleRowBordered: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing[3],
+    borderBottomWidth: 1,
+    borderColor: colors.gray[100],
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing[3],
+  },
+  toggleRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    flex: 1,
+  },
+  toggleIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.gray[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggleTextBlock: {
+    flex: 1,
+  },
+  toggleLabel: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.medium,
+    color: colors.gray[900],
+  },
+  toggleDescription: {
+    fontSize: fontSize.sm,
+    color: colors.gray[500],
+  },
+  appInfo: {
+    alignItems: 'center',
+    marginBottom: spacing[8],
+  },
+  appInfoVersion: {
+    fontSize: fontSize.xs,
+    color: colors.gray[400],
+  },
+  appInfoTagline: {
+    fontSize: fontSize.xs,
+    color: colors.gray[300],
+    marginTop: spacing[1],
+  },
+});
