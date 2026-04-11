@@ -1,42 +1,38 @@
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { colors, spacing, fontSize } from '@/config/theme';
+import React from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
-interface LoadingSpinnerProps {
+import { colors, spacing, typography } from '@/config/theme';
+
+interface Props {
+  label?: string;
   size?: 'small' | 'large';
-  message?: string;
-  fullScreen?: boolean;
+  inverse?: boolean;
 }
 
-export function LoadingSpinner({ size = 'large', message, fullScreen = false }: LoadingSpinnerProps) {
-  const content = (
-    <View style={styles.container}>
-      <ActivityIndicator size={size} color={colors.primary[500]} />
-      {message && <Text style={styles.message}>{message}</Text>}
+export function LoadingSpinner({ label, size = 'large', inverse = false }: Props) {
+  return (
+    <View style={styles.container} accessibilityRole="progressbar">
+      <ActivityIndicator
+        size={size}
+        color={inverse ? colors.white : colors.nhsBlue}
+      />
+      {label ? (
+        <Text style={[styles.label, inverse && styles.labelInverse]}>{label}</Text>
+      ) : null}
     </View>
   );
-
-  if (fullScreen) {
-    return <View style={styles.fullScreen}>{content}</View>;
-  }
-  return content;
 }
 
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing[4],
+    padding: spacing.lg,
   },
-  fullScreen: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.white,
+  label: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
   },
-  message: {
-    color: colors.gray[600],
-    marginTop: spacing[2],
-    fontSize: fontSize.base,
-    textAlign: 'center',
-  },
+  labelInverse: { color: colors.white },
 });

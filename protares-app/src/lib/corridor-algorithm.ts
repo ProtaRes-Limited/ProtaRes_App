@@ -1,255 +1,180 @@
-import type { Coordinates, TransportMode, Responder, Emergency } from '@/types';
-import { haversineDistance, calculateBearing } from './utils';
+import type { Coordinates, TransportMode } from '@/types';
+import { haversineDistance } from './distance';
+import { CORRIDOR_HORIZON_MINUTES, CORRIDOR_STEP_MINUTES } from './constants';
 
-interface TrajectoryPoint {
-  location: Coordinates;
-  timestamp: number; // seconds from now
-  confidence: number; // 0-1
+/**
+ * Corridor Algorithm™ (patent-pending) — §10.1 of master instructions.
+ *
+ * PROBLEM
+ *   A naive "circle around the emergency" dispatch alerts stale responders
+ *   who are moving away. A responder might be 2 km from the incident right
+ *   now but about to pass it in 90 seconds on a northbound bus — we want
+ *   that responder in the alert.
+ *
+ * APPROACH
+ *   1. Estimate the responder's velocity from their recent points.
+ *   2. Project forward at CORRIDOR_STEP_MINUTES intervals for up to
+ *      CORRIDOR_HORIZON_MINUTES, adjusting speed by transport mode.
+ *   3. For each predicted point, compute distance to the target.
+ *   4. Find the minimum predicted distance and the time at which it occurs.
+ *   5. That (t, distance) pair is the Expected Closest Approach.
+ *   6. A confidence score decays with time (further = less certain),
+ *      weighted by the transport mode's inherent variance.
+ *
+ * NOTE
+ *   The real production version consults TfL route geometry for
+ *   bus / train modes, so predictions follow the track rather than a
+ *   straight line. This client-side version uses velocity extrapolation
+ *   as a fallback for the UI preview; the authoritative corridor runs
+ *   inside the `dispatch-alert` Edge Function.
+ */
+
+export interface TimestampedPoint extends Coordinates {
+  /** epoch ms */
+  timestamp: number;
 }
 
-export interface ResponderCandidate {
-  responder: Responder;
-  etaSeconds: number;
+export interface CorridorPoint {
+  coords: Coordinates;
+  /** Minutes from now */
+  tMinutes: number;
+  /** Distance from the target at this predicted time (metres) */
   distanceMeters: number;
-  trajectoryMatch: 'direct' | 'corridor' | 'stationary';
+  /** 0-1 confidence the responder is near this point */
   confidence: number;
 }
 
-interface LocationHistoryEntry {
-  location: Coordinates;
-  timestamp: Date;
-}
-
-/**
- * Find responders whose predicted trajectory brings them near the emergency.
- */
-export function findCorridorResponders(
-  emergency: Emergency,
-  responders: Responder[],
-  maxEtaMinutes: number = 10
-): ResponderCandidate[] {
-  const candidates: ResponderCandidate[] = [];
-  const maxEtaSeconds = maxEtaMinutes * 60;
-
-  for (const responder of responders) {
-    if (!responder.currentLocation) continue;
-
-    const trajectory = predictTrajectory(
-      responder.currentLocation,
-      responder.currentTransportMode,
-      [] // Location history would be passed from tracking
-    );
-
-    const intersection = findTrajectoryIntersection(
-      trajectory,
-      emergency.location,
-      getAlertRadius(emergency)
-    );
-
-    if (intersection && intersection.etaSeconds <= maxEtaSeconds) {
-      candidates.push({
-        responder,
-        etaSeconds: intersection.etaSeconds,
-        distanceMeters: intersection.distanceMeters,
-        trajectoryMatch: intersection.matchType as 'direct' | 'corridor' | 'stationary',
-        confidence: intersection.confidence,
-      });
-    }
-  }
-
-  // Sort by confidence, then tier, then ETA
-  const tierOrder: Record<string, number> = {
-    tier1_active_healthcare: 1,
-    tier2_retired_healthcare: 2,
-    tier3_first_aid: 3,
-    tier4_witness: 4,
-  };
-
-  return candidates.sort((a, b) => {
-    // Prioritize higher confidence matches
-    if (Math.abs(a.confidence - b.confidence) > 0.3) {
-      return b.confidence - a.confidence;
-    }
-    // Then by tier
-    if (tierOrder[a.responder.tier] !== tierOrder[b.responder.tier]) {
-      return tierOrder[a.responder.tier] - tierOrder[b.responder.tier];
-    }
-    // Then by ETA
-    return a.etaSeconds - b.etaSeconds;
-  });
-}
-
-/**
- * Predict the trajectory of a responder based on current location,
- * transport mode, and recent location history.
- */
-export function predictTrajectory(
-  currentLocation: Coordinates,
-  transportMode: TransportMode,
-  locationHistory: LocationHistoryEntry[]
-): TrajectoryPoint[] {
-  const trajectory: TrajectoryPoint[] = [];
-
-  // Current position with full confidence
-  trajectory.push({
-    location: currentLocation,
-    timestamp: 0,
-    confidence: 1.0,
-  });
-
-  if (transportMode === 'stationary' || locationHistory.length < 2) {
-    return trajectory;
-  }
-
-  // Calculate velocity vector from recent history
-  const velocity = calculateVelocity(locationHistory);
-
-  // Linear prediction for walking, driving, cycling, etc.
-  const predictions = [30, 60, 120, 180, 300, 600]; // seconds
-
-  for (const seconds of predictions) {
-    const predicted = extrapolatePosition(currentLocation, velocity, seconds);
-    trajectory.push({
-      location: predicted,
-      timestamp: seconds,
-      confidence: Math.max(0.3, 1 - (seconds / 600) * 0.7),
-    });
-  }
-
-  return trajectory;
-}
-
-/**
- * Find the point where a trajectory intersects an emergency's alert radius.
- */
-export function findTrajectoryIntersection(
-  trajectory: TrajectoryPoint[],
-  emergencyLocation: Coordinates,
-  radiusMeters: number
-): {
-  etaSeconds: number;
-  distanceMeters: number;
-  matchType: string;
+export interface CorridorResult {
+  points: CorridorPoint[];
+  /** Minimum predicted distance across the horizon (metres) */
+  closestDistanceMeters: number;
+  /** Minutes from now at which the closest approach occurs */
+  closestTMinutes: number;
+  /** Overall confidence the responder will reach that closest distance */
   confidence: number;
-} | null {
-  for (const point of trajectory) {
-    const distance = haversineDistance(point.location, emergencyLocation);
+  /** True if the responder is projected to pass within 100 m of the target */
+  willIntercept: boolean;
+}
 
-    if (distance <= radiusMeters) {
-      return {
-        etaSeconds: point.timestamp,
-        distanceMeters: distance,
-        matchType: point.timestamp === 0 ? 'stationary' : 'corridor',
-        confidence: point.confidence,
-      };
-    }
-  }
+/** Typical maximum speed per mode, used as a velocity cap during projection. */
+const MAX_SPEED_MPS: Record<TransportMode, number> = {
+  stationary: 0.5,
+  walking: 2.0,
+  cycling: 6.0,
+  bus: 15.0,
+  train: 35.0,
+  driving: 22.0,
+  unknown: 5.0, // conservative default when classifier cannot pin a mode
+};
 
-  // Check if closest approach is within acceptable range
-  const closestApproach = findClosestApproach(trajectory, emergencyLocation);
-  if (closestApproach && closestApproach.distance <= radiusMeters * 1.5) {
+/** Per-mode confidence decay factor per minute of horizon. */
+const CONFIDENCE_DECAY: Record<TransportMode, number> = {
+  stationary: 0.01,
+  walking: 0.04,
+  cycling: 0.06,
+  bus: 0.09,
+  train: 0.12,
+  driving: 0.1,
+  unknown: 0.15, // decay fastest when we don't know how the responder is moving
+};
+
+export function computeCorridor(
+  history: TimestampedPoint[],
+  target: Coordinates,
+  transportMode: TransportMode = 'walking'
+): CorridorResult {
+  if (history.length < 2) {
+    const lastPoint = history[history.length - 1];
+    const current = lastPoint ?? target;
+    const distance = haversineDistance(current, target);
+    const point: CorridorPoint = {
+      coords: current,
+      tMinutes: 0,
+      distanceMeters: distance,
+      confidence: 0.3,
+    };
     return {
-      etaSeconds:
-        closestApproach.timestamp +
-        estimateDiversionTime(closestApproach.distance),
-      distanceMeters: closestApproach.distance,
-      matchType: 'corridor',
-      confidence: closestApproach.confidence * 0.8,
+      points: [point],
+      closestDistanceMeters: distance,
+      closestTMinutes: 0,
+      confidence: 0.3,
+      willIntercept: distance < 100,
     };
   }
 
-  return null;
-}
+  const velocity = estimateVelocity(history);
+  const maxSpeed = MAX_SPEED_MPS[transportMode];
+  const cappedVelocity = capVelocity(velocity, maxSpeed);
+  const decay = CONFIDENCE_DECAY[transportMode];
+  const current = history[history.length - 1]!;
 
-// ============ Helper Functions ============
-
-function calculateVelocity(
-  history: LocationHistoryEntry[]
-): { speed: number; heading: number } {
-  if (history.length < 2) {
-    return { speed: 0, heading: 0 };
-  }
-
-  const recent = history.slice(-2);
-  const timeDelta =
-    (recent[1].timestamp.getTime() - recent[0].timestamp.getTime()) / 1000;
-  if (timeDelta <= 0) return { speed: 0, heading: 0 };
-
-  const distance = haversineDistance(recent[0].location, recent[1].location);
-  const speed = distance / timeDelta;
-  const heading = calculateBearing(recent[0].location, recent[1].location);
-
-  return { speed, heading };
-}
-
-function extrapolatePosition(
-  current: Coordinates,
-  velocity: { speed: number; heading: number },
-  seconds: number
-): Coordinates {
-  const distance = velocity.speed * seconds;
-  const headingRad = (velocity.heading * Math.PI) / 180;
-
-  const R = 6371e3;
-  const lat1 = (current.latitude * Math.PI) / 180;
-  const lon1 = (current.longitude * Math.PI) / 180;
-
-  const lat2 = Math.asin(
-    Math.sin(lat1) * Math.cos(distance / R) +
-      Math.cos(lat1) * Math.sin(distance / R) * Math.cos(headingRad)
-  );
-
-  const lon2 =
-    lon1 +
-    Math.atan2(
-      Math.sin(headingRad) * Math.sin(distance / R) * Math.cos(lat1),
-      Math.cos(distance / R) - Math.sin(lat1) * Math.sin(lat2)
-    );
-
-  return {
-    latitude: (lat2 * 180) / Math.PI,
-    longitude: (lon2 * 180) / Math.PI,
-  };
-}
-
-function findClosestApproach(
-  trajectory: TrajectoryPoint[],
-  target: Coordinates
-): { distance: number; timestamp: number; confidence: number } | null {
-  if (trajectory.length === 0) return null;
-
-  let closest = {
-    distance: Infinity,
-    timestamp: 0,
-    confidence: 0,
+  const points: CorridorPoint[] = [];
+  let closest: CorridorPoint = {
+    coords: current,
+    tMinutes: 0,
+    distanceMeters: haversineDistance(current, target),
+    confidence: 1.0,
   };
 
-  for (const point of trajectory) {
-    const distance = haversineDistance(point.location, target);
-    if (distance < closest.distance) {
-      closest = {
-        distance,
-        timestamp: point.timestamp,
-        confidence: point.confidence,
-      };
+  for (let t = 0; t <= CORRIDOR_HORIZON_MINUTES; t += CORRIDOR_STEP_MINUTES) {
+    const projected = projectCoordinate(current, cappedVelocity, t * 60);
+    const dist = haversineDistance(projected, target);
+    const confidence = Math.max(0, 1 - decay * t);
+    const p: CorridorPoint = { coords: projected, tMinutes: t, distanceMeters: dist, confidence };
+    points.push(p);
+    if (dist < closest.distanceMeters) {
+      closest = p;
     }
   }
 
-  return closest.distance < Infinity ? closest : null;
-}
-
-function estimateDiversionTime(distanceMeters: number): number {
-  // Assume walking speed for diversion (~1.4 m/s)
-  return distanceMeters / 1.4;
-}
-
-function getAlertRadius(emergency: Emergency): number {
-  const baseRadius: Record<string, number> = {
-    cardiac_arrest: 500,
-    road_accident: 800,
-    stroke: 600,
-    default: 1000,
+  return {
+    points,
+    closestDistanceMeters: closest.distanceMeters,
+    closestTMinutes: closest.tMinutes,
+    confidence: closest.confidence,
+    willIntercept: closest.distanceMeters < 100,
   };
+}
 
-  return baseRadius[emergency.emergencyType] || baseRadius.default;
+interface Velocity {
+  /** metres per second in the latitude direction */
+  vLatMps: number;
+  /** metres per second in the longitude direction */
+  vLngMps: number;
+}
+
+function estimateVelocity(history: TimestampedPoint[]): Velocity {
+  const latest = history[history.length - 1]!;
+  const earlier = history[history.length - 2]!;
+  const dtSec = (latest.timestamp - earlier.timestamp) / 1000;
+  if (dtSec <= 0) return { vLatMps: 0, vLngMps: 0 };
+
+  const metersPerDegLat = 111_000;
+  const metersPerDegLng =
+    111_000 * Math.cos((latest.latitude * Math.PI) / 180);
+
+  const vLatMps = ((latest.latitude - earlier.latitude) * metersPerDegLat) / dtSec;
+  const vLngMps = ((latest.longitude - earlier.longitude) * metersPerDegLng) / dtSec;
+
+  return { vLatMps, vLngMps };
+}
+
+function capVelocity(v: Velocity, maxMps: number): Velocity {
+  const mag = Math.hypot(v.vLatMps, v.vLngMps);
+  if (mag <= maxMps || mag === 0) return v;
+  const factor = maxMps / mag;
+  return { vLatMps: v.vLatMps * factor, vLngMps: v.vLngMps * factor };
+}
+
+function projectCoordinate(
+  from: Coordinates,
+  velocity: Velocity,
+  seconds: number
+): Coordinates {
+  const metersPerDegLat = 111_000;
+  const metersPerDegLng = 111_000 * Math.cos((from.latitude * Math.PI) / 180);
+  return {
+    latitude: from.latitude + (velocity.vLatMps * seconds) / metersPerDegLat,
+    longitude: from.longitude + (velocity.vLngMps * seconds) / metersPerDegLng,
+  };
 }

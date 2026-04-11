@@ -1,64 +1,75 @@
-import { View, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import React, { type ReactNode } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { ReactNode } from 'react';
+
 import { colors, spacing } from '@/config/theme';
 
-interface ScreenProps {
+interface Props {
   children: ReactNode;
-  scroll?: boolean;
+  scrollable?: boolean;
+  withKeyboardAvoid?: boolean;
   padded?: boolean;
-  safeArea?: boolean;
-  keyboardAvoiding?: boolean;
-  bgColor?: string;
+  style?: ViewStyle;
+  edges?: ('top' | 'bottom' | 'left' | 'right')[];
 }
 
+/**
+ * Consistent screen wrapper. Provides safe-area insets, optional
+ * scrolling, and keyboard avoidance for auth and form screens.
+ */
 export function Screen({
   children,
-  scroll = false,
+  scrollable = false,
+  withKeyboardAvoid = false,
   padded = true,
-  safeArea = true,
-  keyboardAvoiding = false,
-  bgColor = colors.gray[50],
-}: ScreenProps) {
-  const Container = safeArea ? SafeAreaView : View;
-  const contentStyle = [styles.flex1, padded && styles.padded];
-
-  const content = scroll ? (
-    <ScrollView
-      style={contentStyle}
-      contentContainerStyle={styles.scrollContent}
-      keyboardShouldPersistTaps="handled"
-    >
-      {children}
-    </ScrollView>
-  ) : (
-    <View style={contentStyle}>{children}</View>
+  style,
+  edges = ['top', 'left', 'right'],
+}: Props) {
+  const inner = (
+    <View style={[styles.inner, padded && styles.padded, style]}>{children}</View>
   );
 
-  if (keyboardAvoiding) {
-    return (
-      <Container style={[styles.flex1, { backgroundColor: bgColor }]}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.flex1}
-        >
-          {content}
-        </KeyboardAvoidingView>
-      </Container>
-    );
-  }
+  const body = scrollable ? (
+    <ScrollView
+      contentContainerStyle={styles.scrollContent}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      {inner}
+    </ScrollView>
+  ) : (
+    inner
+  );
 
-  return <Container style={[styles.flex1, { backgroundColor: bgColor }]}>{content}</Container>;
+  const avoidWrapped = withKeyboardAvoid ? (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      {body}
+    </KeyboardAvoidingView>
+  ) : (
+    body
+  );
+
+  return (
+    <SafeAreaView style={styles.safe} edges={edges}>
+      {avoidWrapped}
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-  flex1: {
-    flex: 1,
-  },
-  padded: {
-    paddingHorizontal: spacing[4],
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
+  safe: { flex: 1, backgroundColor: colors.background },
+  flex: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
+  inner: { flex: 1 },
+  padded: { paddingHorizontal: spacing.xl, paddingVertical: spacing.lg },
 });

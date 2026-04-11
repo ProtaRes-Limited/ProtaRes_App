@@ -1,115 +1,29 @@
 import { z } from 'zod';
 
+import { EMERGENCY_TYPES, EMERGENCY_SEVERITIES } from '@/lib/constants';
+
+/**
+ * Zod schema for reporting a new emergency. The enum values here
+ * must match the Postgres enums `emergency_type` and
+ * `emergency_severity` — regenerate `src/types/database.types.ts`
+ * after any change and update `@/lib/constants` accordingly.
+ */
+
+const emergencyTypeEnum = z.enum(
+  EMERGENCY_TYPES as unknown as [string, ...string[]]
+);
+const emergencySeverityEnum = z.enum(
+  EMERGENCY_SEVERITIES as unknown as [string, ...string[]]
+);
+
 export const reportEmergencySchema = z.object({
-  emergencyType: z.enum(
-    [
-      'cardiac_arrest',
-      'heart_attack',
-      'road_accident',
-      'pedestrian_incident',
-      'cyclist_incident',
-      'stroke',
-      'diabetic_emergency',
-      'anaphylaxis',
-      'seizure',
-      'breathing_difficulty',
-      'stabbing',
-      'assault',
-      'serious_fall',
-      'choking',
-      'drowning',
-      'burn',
-      'electrocution',
-      'overdose',
-      'other_medical',
-      'other_trauma',
-    ],
-    {
-      message: 'Please select an emergency type',
-    }
-  ),
-
-  location: z.object({
-    latitude: z.number(),
-    longitude: z.number(),
-  }),
-
-  locationDescription: z
-    .string()
-    .max(200, 'Description must be less than 200 characters')
-    .optional(),
-
-  casualtyCount: z
-    .number()
-    .min(1, 'At least 1 casualty')
-    .max(99, 'Please contact 999 for mass casualty incidents')
-    .default(1),
-
-  casualtiesConscious: z.boolean().optional(),
-
-  casualtiesBreathing: z.boolean().optional(),
-
-  description: z
-    .string()
-    .max(500, 'Description must be less than 500 characters')
-    .optional(),
+  emergencyType: emergencyTypeEnum,
+  severity: emergencySeverityEnum,
+  description: z.string().max(500).optional(),
+  casualtyCount: z.coerce.number().int().min(0).max(20),
+  casualtiesConscious: z.boolean().nullable().optional(),
+  casualtiesBreathing: z.boolean().nullable().optional(),
+  locationDescription: z.string().max(200).optional(),
 });
 
-export type ReportEmergencyFormData = z.infer<typeof reportEmergencySchema>;
-
-export const responseActionsSchema = z.object({
-  interventions: z.array(
-    z.enum([
-      'cpr_started',
-      'aed_applied',
-      'aed_shock_delivered',
-      'bleeding_controlled',
-      'tourniquet_applied',
-      'wound_packed',
-      'recovery_position',
-      'airway_cleared',
-      'spinal_immobilisation',
-      'medication_given',
-    ])
-  ),
-
-  equipmentUsed: z
-    .array(
-      z.enum([
-        'aed',
-        'trauma_kit',
-        'burn_kit',
-        'naloxone_kit',
-        'basic_medical_kit',
-      ])
-    )
-    .optional(),
-
-  notes: z
-    .string()
-    .max(1000, 'Notes must be less than 1000 characters')
-    .optional(),
-});
-
-export type ResponseActionsFormData = z.infer<typeof responseActionsSchema>;
-
-export const handoverSchema = z.object({
-  handoverTo: z.enum(['ambulance', 'police', 'fire', 'family', 'other'], {
-    message: 'Please select who you handed over to',
-  }),
-
-  patientConscious: z.boolean(),
-  patientBreathing: z.boolean(),
-
-  interventionsSummary: z
-    .string()
-    .min(10, 'Please provide a brief summary of interventions')
-    .max(500, 'Summary must be less than 500 characters'),
-
-  additionalNotes: z
-    .string()
-    .max(500, 'Notes must be less than 500 characters')
-    .optional(),
-});
-
-export type HandoverFormData = z.infer<typeof handoverSchema>;
+export type ReportEmergencyFormValues = z.infer<typeof reportEmergencySchema>;

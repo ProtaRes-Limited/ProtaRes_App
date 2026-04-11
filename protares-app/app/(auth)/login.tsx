@@ -1,212 +1,198 @@
-import { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { useRouter, Link } from 'expo-router';
-import { Shield } from 'lucide-react-native';
-import { useForm, Controller } from 'react-hook-form';
-import { Screen } from '@/components/layout/Screen';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
-import { useAuthStore } from '@/stores/auth';
-import { colors, spacing, borderRadius, fontSize, fontWeight } from '@/config/theme';
+import React, { useState } from 'react';
+import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Link } from 'expo-router';
+import { Mail, Lock } from 'lucide-react-native';
 
-interface LoginFormData {
-  email: string;
-  password: string;
-}
+import { Screen } from '@/components/layout/Screen';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { loginSchema, type LoginFormValues } from '@/schemas/auth';
+import { signInWithEmail, signInWithGoogle } from '@/services/auth';
+import { mapError } from '@/lib/error-messages';
+import { captureException } from '@/lib/sentry';
+import { colors, spacing, typography } from '@/config/theme';
 
 export default function LoginScreen() {
-  const router = useRouter();
-  const _setUser = useAuthStore((s) => s.setUser);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const {
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginFormData>({
-    defaultValues: {
-      email: '',
-      password: '',
-    },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
   });
 
-  const onSubmit = async (_data: LoginFormData) => {
-    setLoading(true);
-    setError(null);
-
+  const onSubmit = async (values: LoginFormValues) => {
+    setSubmitting(true);
     try {
-      // In a real app this would call authService.signIn(data)
-      // For now, simulate a successful login
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      router.replace('/(tabs)');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Invalid email or password. Please try again.';
-      setError(message);
+      await signInWithEmail(values.email, values.password);
+      // AuthGate will redirect automatically once the session is set.
+    } catch (err) {
+      const mapped = mapError(err);
+      captureException(err, { context: 'login.email' });
+      Alert.alert(mapped.title, mapped.message);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      const mapped = mapError(err);
+      captureException(err, { context: 'login.google' });
+      Alert.alert(mapped.title, mapped.message);
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
   return (
-    <Screen scroll keyboardAvoiding bgColor={colors.white}>
-      <View style={styles.container}>
-        {/* Branding */}
-        <View style={styles.branding}>
-          <View style={styles.logoWrapper}>
-            <Shield size={44} color={colors.white} />
-          </View>
-          <Text style={styles.appName}>ProtaRes</Text>
-          <Text style={styles.tagline}>Community Emergency Response Network</Text>
+    <Screen scrollable withKeyboardAvoid>
+      <View style={styles.hero}>
+        <Text style={styles.title}>ProtaRes</Text>
+        <Text style={styles.subtitle}>
+          Emergency Response Coordination
+        </Text>
+      </View>
+
+      <View style={styles.form}>
+        <Controller
+          control={control}
+          name="email"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <Input
+              label="Email"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              placeholder="you@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              textContentType="emailAddress"
+              error={errors.email?.message}
+              leftAdornment={<Mail size={18} color={colors.grey3} />}
+              required
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="password"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <Input
+              label="Password"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              placeholder="Your password"
+              secureTextEntry
+              autoCapitalize="none"
+              textContentType="password"
+              error={errors.password?.message}
+              leftAdornment={<Lock size={18} color={colors.grey3} />}
+              required
+            />
+          )}
+        />
+
+        <Link href="/(auth)/forgot-password" style={styles.forgotLink}>
+          <Text style={styles.linkText}>Forgot password?</Text>
+        </Link>
+
+        <Button
+          label="Sign in"
+          onPress={handleSubmit(onSubmit)}
+          loading={submitting}
+          size="lg"
+          fullWidth
+        />
+
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>OR</Text>
+          <View style={styles.dividerLine} />
         </View>
 
-        {/* Error Message */}
-        {error && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
+        <Button
+          label="Continue with Google"
+          onPress={handleGoogle}
+          loading={googleLoading}
+          variant="outline"
+          size="lg"
+          fullWidth
+        />
+      </View>
 
-        {/* Form */}
-        <View style={styles.form}>
-          <Controller
-            control={control}
-            name="email"
-            rules={{
-              required: 'Email is required',
-              pattern: {
-                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                message: 'Please enter a valid email address',
-              },
-            }}
-            render={({ field: { onChange, value } }) => (
-              <Input
-                label="Email"
-                placeholder="your.email@nhs.net"
-                value={value}
-                onChangeText={onChange}
-                error={errors.email?.message}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            )}
-          />
-
-          <Controller
-            control={control}
-            name="password"
-            rules={{
-              required: 'Password is required',
-              minLength: {
-                value: 8,
-                message: 'Password must be at least 8 characters',
-              },
-            }}
-            render={({ field: { onChange, value } }) => (
-              <Input
-                label="Password"
-                placeholder="Enter your password"
-                value={value}
-                onChangeText={onChange}
-                error={errors.password?.message}
-                secureTextEntry
-              />
-            )}
-          />
-
-          <Pressable style={styles.forgotLink}>
-            <Text style={styles.forgotText}>Forgot password?</Text>
-          </Pressable>
-        </View>
-
-        {/* Sign In Button */}
-        <Button variant="primary" size="lg" fullWidth onPress={handleSubmit(onSubmit)} loading={loading}>
-          Sign In
-        </Button>
-
-        {/* Register Link */}
-        <View style={styles.registerLinkRow}>
-          <Text style={styles.registerLinkLabel}>Don't have an account? </Text>
-          <Link href="/(auth)/register" asChild>
-            <Pressable>
-              <Text style={styles.registerLinkAction}>Create Account</Text>
-            </Pressable>
-          </Link>
-        </View>
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>New to ProtaRes? </Text>
+        <Link href="/(auth)/register">
+          <Text style={[styles.linkText, styles.linkBold]}>Create account</Text>
+        </Link>
       </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingVertical: spacing[12],
-  },
-  branding: {
+  hero: {
     alignItems: 'center',
-    marginBottom: spacing[10],
+    marginTop: spacing.xxxl,
+    marginBottom: spacing.xxl,
   },
-  logoWrapper: {
-    width: 80,
-    height: 80,
-    borderRadius: borderRadius.xl,
-    backgroundColor: colors.primary[500],
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing[4],
+  title: {
+    ...typography.display,
+    color: colors.nhsBlue,
+    letterSpacing: -0.5,
   },
-  appName: {
-    fontSize: fontSize['3xl'],
-    fontWeight: fontWeight.bold,
-    color: colors.primary[500],
-    marginBottom: spacing[2],
+  subtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
   },
-  tagline: {
-    fontSize: fontSize.base,
-    color: colors.gray[500],
-    textAlign: 'center',
-  },
-  errorBox: {
-    backgroundColor: colors.emergency[50],
-    borderWidth: 1,
-    borderColor: colors.emergency[200],
-    borderRadius: borderRadius.md,
-    padding: spacing[4],
-    marginBottom: spacing[6],
-  },
-  errorText: {
-    color: colors.emergency[600],
-    fontSize: fontSize.sm,
-    textAlign: 'center',
-  },
-  form: {
-    marginBottom: spacing[6],
-  },
+  form: { marginBottom: spacing.xl },
   forgotLink: {
     alignSelf: 'flex-end',
-    marginBottom: spacing[6],
+    marginBottom: spacing.lg,
+    padding: spacing.xs,
   },
-  forgotText: {
-    fontSize: fontSize.sm,
-    color: colors.primary[500],
-    fontWeight: fontWeight.medium,
+  linkText: {
+    ...typography.bodySmall,
+    color: colors.nhsBlue,
   },
-  registerLinkRow: {
+  linkBold: { fontWeight: '700' },
+  divider: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginVertical: spacing.xl,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginHorizontal: spacing.md,
+  },
+  footer: {
+    flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: spacing[8],
+    alignItems: 'center',
+    marginBottom: spacing.xl,
   },
-  registerLinkLabel: {
-    color: colors.gray[500],
-    fontSize: fontSize.sm,
-  },
-  registerLinkAction: {
-    color: colors.primary[500],
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semibold,
+  footerText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
 });

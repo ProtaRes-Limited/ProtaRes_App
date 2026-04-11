@@ -1,86 +1,51 @@
-// src/types/index.ts
+/**
+ * Domain types — aligned with the live Supabase schema.
+ *
+ * The canonical source for field names and enum values is
+ * `database.types.ts`, which is regenerated from the live project via
+ * `supabase gen types typescript`. This file exposes a small set of
+ * app-friendly camelCase types that wrap the raw DB rows so screens
+ * don't have to deal with snake_case everywhere.
+ *
+ * Keep the unions below in lockstep with the enums in database.types.ts.
+ */
 
-// ============ ENUMS ============
+import type { Database } from './database.types';
 
-export type ResponderTier =
-  | 'tier1_active_healthcare'
-  | 'tier2_retired_healthcare'
-  | 'tier3_first_aid'
-  | 'tier4_witness';
+// ---------------------------------------------------------------------------
+// Enum aliases (pulled straight from the generated types)
+// ---------------------------------------------------------------------------
 
-export type AvailabilityStatus =
-  | 'available'
-  | 'busy'
-  | 'unavailable'
-  | 'do_not_disturb';
+export type ResponderTier = Database['public']['Enums']['responder_tier'];
+// 'tier1_active_healthcare' | 'tier2_retired_healthcare' | 'tier3_first_aid' | 'tier4_witness'
 
-export type EmergencyType =
-  | 'cardiac_arrest'
-  | 'heart_attack'
-  | 'road_accident'
-  | 'pedestrian_incident'
-  | 'cyclist_incident'
-  | 'stroke'
-  | 'diabetic_emergency'
-  | 'anaphylaxis'
-  | 'seizure'
-  | 'breathing_difficulty'
-  | 'stabbing'
-  | 'assault'
-  | 'serious_fall'
-  | 'choking'
-  | 'drowning'
-  | 'burn'
-  | 'electrocution'
-  | 'overdose'
-  | 'other_medical'
-  | 'other_trauma';
+export type AvailabilityStatus = Database['public']['Enums']['availability_status'];
+// 'available' | 'busy' | 'unavailable' | 'do_not_disturb'
 
-export type EmergencySeverity = 'critical' | 'serious' | 'moderate' | 'minor';
+export type TransportMode = Database['public']['Enums']['transport_mode'];
+// 'stationary' | 'walking' | 'cycling' | 'bus' | 'train' | 'driving' | 'unknown'
 
-export type EmergencyStatus =
-  | 'reported'
-  | 'dispatched'
-  | 'responder_en_route'
-  | 'responder_on_scene'
-  | 'ems_en_route'
-  | 'ems_on_scene'
-  | 'handover_complete'
-  | 'resolved'
-  | 'cancelled'
-  | 'no_response';
+export type EmergencyStatus = Database['public']['Enums']['emergency_status'];
+// 'reported' | 'dispatched' | 'responder_en_route' | … | 'no_response'
 
-export type ResponseStatus =
-  | 'alerted'
-  | 'accepted'
-  | 'declined'
-  | 'en_route'
-  | 'on_scene'
-  | 'intervening'
-  | 'completing'
-  | 'completed'
-  | 'withdrawn';
+export type EmergencyType = Database['public']['Enums']['emergency_type'];
+// 'cardiac_arrest' | 'heart_attack' | 'road_accident' | …
 
-export type TransportMode =
-  | 'stationary'
-  | 'walking'
-  | 'cycling'
-  | 'bus'
-  | 'train'
-  | 'driving'
-  | 'unknown';
+export type EmergencySeverity = Database['public']['Enums']['emergency_severity'];
+// 'critical' | 'serious' | 'moderate' | 'minor'
 
-export type EquipmentType =
-  | 'aed'
-  | 'trauma_kit'
-  | 'burn_kit'
-  | 'naloxone_kit'
-  | 'obstetric_kit'
-  | 'basic_medical_kit'
-  | 'oxygen'
-  | 'cutting_gear';
+export type EquipmentType = Database['public']['Enums']['equipment_type'];
+// 'aed' | 'trauma_kit' | …
 
-// ============ INTERFACES ============
+export type ResponseStatus = Database['public']['Enums']['response_status'];
+// 'alerted' | 'accepted' | 'declined' | 'en_route' | 'on_scene' | …
+
+export type VerificationStatus = Database['public']['Enums']['verification_status'];
+// 'pending' | 'verified' | 'rejected' | 'expired' | 'revoked'
+
+// ---------------------------------------------------------------------------
+// Domain objects (camelCase wrappers around DB rows)
+// ---------------------------------------------------------------------------
 
 export interface Coordinates {
   latitude: number;
@@ -98,7 +63,7 @@ export interface Responder {
   tier: ResponderTier;
   availability: AvailabilityStatus;
   currentLocation: Coordinates | null;
-  currentTransportMode: TransportMode;
+  currentTransportMode: TransportMode | null;
   locationUpdatedAt: string | null;
   alertRadiusKm: number;
   smsFallbackEnabled: boolean;
@@ -108,16 +73,31 @@ export interface Responder {
   totalDeclined: number;
   averageResponseTimeSeconds: number | null;
   locationConsent: boolean;
+  locationConsentAt: string | null;
+  dataProcessingConsent: boolean;
+  dataProcessingConsentAt: string | null;
+  marketingConsent: boolean;
   createdAt: string;
   updatedAt: string;
   lastActiveAt: string | null;
+  deletedAt: string | null;
 }
+
+/**
+ * Credential "body" used in UI: the form asks the user to pick which
+ * regulator they want to verify with. The DB stores this as a TEXT
+ * column (`credential_type`) rather than an enum — the values below
+ * are the canonical set.
+ */
+export type CredentialBody = 'gmc' | 'nmc' | 'hcpc' | 'first_aid';
 
 export interface Credential {
   id: string;
   responderId: string;
   credentialType: string;
-  verificationStatus: 'pending' | 'verified' | 'rejected' | 'expired' | 'revoked';
+  /** Hashed value — never stored plaintext. */
+  credentialNumberHash: string;
+  verificationStatus: VerificationStatus;
   verifiedAt: string | null;
   issuedAt: string | null;
   expiresAt: string | null;
@@ -142,8 +122,8 @@ export interface Emergency {
   casualtiesBreathing: boolean | null;
   witnessStreamActive: boolean;
   witnessStreamUrl: string | null;
-  equipmentRequested: EquipmentType[];
-  equipmentDelivered: EquipmentType[];
+  equipmentRequested: string[];
+  equipmentDelivered: string[];
   ambulanceNotified: boolean;
   ambulanceNotifiedAt: string | null;
   ambulanceEtaMinutes: number | null;
@@ -152,75 +132,16 @@ export interface Emergency {
   createdAt: string;
   updatedAt: string;
   resolvedAt: string | null;
-  // Computed
-  distanceMeters?: number;
-  etaMinutes?: number;
-}
-
-export interface EmergencyResponse {
-  id: string;
-  emergencyId: string;
-  responderId: string;
-  alertedAt: string;
-  alertMethod: 'push' | 'sms' | 'both';
-  estimatedEtaSeconds: number | null;
-  status: ResponseStatus;
-  acceptedAt: string | null;
-  declinedAt: string | null;
-  declineReason: string | null;
-  departedAt: string | null;
-  arrivedAt: string | null;
-  transportMode: TransportMode | null;
-  interventionsPerformed: string[];
-  equipmentUsed: EquipmentType[];
-  notes: string | null;
-  handoverAt: string | null;
-  handoverTo: string | null;
-  completedAt: string | null;
-  feedbackRating: number | null;
-  feedbackNotes: string | null;
-  // Relations
-  emergency?: Emergency;
-  responder?: Responder;
-}
-
-export interface EquipmentLocation {
-  id: string;
-  equipmentType: EquipmentType;
-  name: string | null;
-  description: string | null;
-  location: Coordinates;
-  locationAddress: string | null;
-  locationDetails: string | null;
-  isAvailable: boolean;
-  availableHours: string | null;
-  accessInstructions: string | null;
-  distanceMeters?: number;
+  /** Computed client-side for display. */
+  distanceMeters: number | null;
+  etaMinutes: number | null;
 }
 
 export interface GreenBadge {
-  responderId: string;
-  name: string;
-  tier: ResponderTier;
-  credentialType: string | null;
-  verified: boolean;
+  signedPayload: string;
   issuedAt: string;
   expiresAt: string;
-  qrData: string; // Encrypted QR code data
+  nonce: string;
 }
 
-// ============ API TYPES ============
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  hasMore: boolean;
-}
-
-export interface ApiError {
-  code: string;
-  message: string;
-  details?: Record<string, unknown>;
-}
+export * from './database.types';

@@ -1,35 +1,30 @@
-import { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { useRouter, Link } from 'expo-router';
-import { Shield } from 'lucide-react-native';
-import { useForm, Controller } from 'react-hook-form';
-import { Screen } from '@/components/layout/Screen';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
-import { colors, spacing, borderRadius, fontSize, fontWeight } from '@/config/theme';
+import React, { useState } from 'react';
+import { Alert, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Link, useRouter } from 'expo-router';
+import { Check } from 'lucide-react-native';
 
-interface RegisterFormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  password: string;
-  confirmPassword: string;
-  termsAccepted: boolean;
-  privacyAccepted: boolean;
-}
+import { Screen } from '@/components/layout/Screen';
+import { Header } from '@/components/layout/Header';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { registerSchema, type RegisterFormValues } from '@/schemas/auth';
+import { signUpWithEmail } from '@/services/auth';
+import { mapError } from '@/lib/error-messages';
+import { captureException } from '@/lib/sentry';
+import { colors, radii, spacing, typography } from '@/config/theme';
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const {
     control,
     handleSubmit,
-    watch,
     formState: { errors },
-  } = useForm<RegisterFormData>({
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
     defaultValues: {
       firstName: '',
       lastName: '',
@@ -37,81 +32,69 @@ export default function RegisterScreen() {
       phone: '',
       password: '',
       confirmPassword: '',
-      termsAccepted: false,
-      privacyAccepted: false,
+      acceptTerms: false as unknown as true,
     },
   });
 
-  const password = watch('password');
-
-  const onSubmit = async (data: RegisterFormData) => {
-    if (!data.termsAccepted || !data.privacyAccepted) {
-      setError('You must accept the Terms of Service and Privacy Policy.');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
+  const onSubmit = async (values: RegisterFormValues) => {
+    setSubmitting(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      router.replace('/(tabs)');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Registration failed. Please try again.';
-      setError(message);
+      await signUpWithEmail(values.email, values.password, {
+        firstName: values.firstName,
+        lastName: values.lastName,
+        phone: values.phone,
+      });
+      Alert.alert(
+        'Check your email',
+        "We've sent a confirmation link to your inbox. Please verify your email to continue.",
+        [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }]
+      );
+    } catch (err) {
+      const mapped = mapError(err);
+      captureException(err, { context: 'register.email' });
+      Alert.alert(mapped.title, mapped.message);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
   return (
-    <Screen scroll keyboardAvoiding bgColor={colors.white}>
-      <View style={styles.container}>
-        <View style={styles.branding}>
-          <View style={styles.logoWrapper}>
-            <Shield size={30} color={colors.white} />
-          </View>
-          <Text style={styles.appName}>Join ProtaRes</Text>
-          <Text style={styles.tagline}>Register as a community emergency responder</Text>
-        </View>
-
-        {error && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-
-        <View style={styles.nameRow}>
-          <View style={styles.nameField}>
+    <Screen scrollable withKeyboardAvoid padded={false}>
+      <Header title="Create account" showBack />
+      <View style={styles.form}>
+        <View style={styles.row}>
+          <View style={styles.half}>
             <Controller
               control={control}
               name="firstName"
-              rules={{ required: 'First name is required' }}
-              render={({ field: { onChange, value } }) => (
+              render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="First Name"
-                  placeholder="Sarah"
+                  label="First name"
                   value={value}
                   onChangeText={onChange}
+                  onBlur={onBlur}
                   error={errors.firstName?.message}
-                  autoCapitalize="words"
+                  autoComplete="given-name"
+                  textContentType="givenName"
+                  required
                 />
               )}
             />
           </View>
-          <View style={styles.nameField}>
+          <View style={styles.half}>
             <Controller
               control={control}
               name="lastName"
-              rules={{ required: 'Last name is required' }}
-              render={({ field: { onChange, value } }) => (
+              render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="Last Name"
-                  placeholder="Johnson"
+                  label="Last name"
                   value={value}
                   onChangeText={onChange}
+                  onBlur={onBlur}
                   error={errors.lastName?.message}
-                  autoCapitalize="words"
+                  autoComplete="family-name"
+                  textContentType="familyName"
+                  required
                 />
               )}
             />
@@ -121,22 +104,18 @@ export default function RegisterScreen() {
         <Controller
           control={control}
           name="email"
-          rules={{
-            required: 'Email is required',
-            pattern: {
-              value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-              message: 'Please enter a valid email',
-            },
-          }}
-          render={({ field: { onChange, value } }) => (
+          render={({ field: { onChange, onBlur, value } }) => (
             <Input
               label="Email"
-              placeholder="your.email@nhs.net"
               value={value}
               onChangeText={onChange}
+              onBlur={onBlur}
               error={errors.email?.message}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoComplete="email"
+              textContentType="emailAddress"
+              required
             />
           )}
         />
@@ -144,21 +123,17 @@ export default function RegisterScreen() {
         <Controller
           control={control}
           name="phone"
-          rules={{
-            required: 'Phone number is required',
-            pattern: {
-              value: /^\+?[\d\s-]{10,}$/,
-              message: 'Please enter a valid phone number',
-            },
-          }}
-          render={({ field: { onChange, value } }) => (
+          render={({ field: { onChange, onBlur, value } }) => (
             <Input
-              label="Phone Number"
-              placeholder="+44 7700 900 123"
-              value={value}
+              label="Phone (optional)"
+              value={value ?? ''}
               onChangeText={onChange}
+              onBlur={onBlur}
               error={errors.phone?.message}
               keyboardType="phone-pad"
+              autoComplete="tel"
+              textContentType="telephoneNumber"
+              hint="Used for SMS fallback if push fails"
             />
           )}
         />
@@ -166,18 +141,18 @@ export default function RegisterScreen() {
         <Controller
           control={control}
           name="password"
-          rules={{
-            required: 'Password is required',
-            minLength: { value: 8, message: 'Password must be at least 8 characters' },
-          }}
-          render={({ field: { onChange, value } }) => (
+          render={({ field: { onChange, onBlur, value } }) => (
             <Input
               label="Password"
-              placeholder="Minimum 8 characters"
               value={value}
               onChangeText={onChange}
+              onBlur={onBlur}
               error={errors.password?.message}
               secureTextEntry
+              autoCapitalize="none"
+              textContentType="newPassword"
+              hint="At least 10 characters, with a letter and a number"
+              required
             />
           )}
         />
@@ -185,62 +160,63 @@ export default function RegisterScreen() {
         <Controller
           control={control}
           name="confirmPassword"
-          rules={{
-            required: 'Please confirm your password',
-            validate: (val) => val === password || 'Passwords do not match',
-          }}
-          render={({ field: { onChange, value } }) => (
+          render={({ field: { onChange, onBlur, value } }) => (
             <Input
-              label="Confirm Password"
-              placeholder="Re-enter your password"
+              label="Confirm password"
               value={value}
               onChangeText={onChange}
+              onBlur={onBlur}
               error={errors.confirmPassword?.message}
               secureTextEntry
+              autoCapitalize="none"
+              required
             />
           )}
         />
 
         <Controller
           control={control}
-          name="termsAccepted"
+          name="acceptTerms"
           render={({ field: { onChange, value } }) => (
-            <Pressable onPress={() => onChange(!value)} style={styles.checkboxRow}>
-              <View style={[styles.checkbox, value ? styles.checkboxChecked : styles.checkboxUnchecked]}>
-                {value && <Text style={styles.checkmark}>✓</Text>}
+            <TouchableOpacity
+              style={styles.consent}
+              onPress={() => onChange(!value as unknown as true)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: Boolean(value) }}
+              accessibilityLabel="Accept privacy notice and terms"
+            >
+              <View style={[styles.checkbox, value ? styles.checkboxChecked : null]}>
+                {value ? <Check size={16} color={colors.white} /> : null}
               </View>
-              <Text style={styles.checkboxLabel}>
-                I agree to the <Text style={styles.linkText}>Terms of Service</Text>
+              <Text style={styles.consentText}>
+                I accept the{' '}
+                <Text
+                  style={styles.consentLink}
+                  onPress={() => Linking.openURL('https://protares.co.uk/privacy')}
+                >
+                  Privacy Notice
+                </Text>{' '}
+                and understand that my data will be processed in accordance with UK GDPR.
               </Text>
-            </Pressable>
+            </TouchableOpacity>
           )}
         />
+        {errors.acceptTerms?.message ? (
+          <Text style={styles.consentError}>{errors.acceptTerms.message}</Text>
+        ) : null}
 
-        <Controller
-          control={control}
-          name="privacyAccepted"
-          render={({ field: { onChange, value } }) => (
-            <Pressable onPress={() => onChange(!value)} style={[styles.checkboxRow, styles.marginBottom8]}>
-              <View style={[styles.checkbox, value ? styles.checkboxChecked : styles.checkboxUnchecked]}>
-                {value && <Text style={styles.checkmark}>✓</Text>}
-              </View>
-              <Text style={styles.checkboxLabel}>
-                I have read and accept the <Text style={styles.linkText}>Privacy Policy</Text>
-              </Text>
-            </Pressable>
-          )}
+        <Button
+          label="Create account"
+          onPress={handleSubmit(onSubmit)}
+          loading={submitting}
+          size="lg"
+          fullWidth
         />
 
-        <Button variant="primary" size="lg" fullWidth onPress={handleSubmit(onSubmit)} loading={loading}>
-          Create Account
-        </Button>
-
-        <View style={styles.loginLinkRow}>
-          <Text style={styles.loginLinkLabel}>Already have an account? </Text>
-          <Link href="/(auth)/login" asChild>
-            <Pressable>
-              <Text style={styles.loginLinkAction}>Sign In</Text>
-            </Pressable>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Already have an account? </Text>
+          <Link href="/(auth)/login">
+            <Text style={styles.linkBold}>Sign in</Text>
           </Link>
         </View>
       </View>
@@ -249,107 +225,49 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingVertical: spacing[8],
-  },
-  branding: {
-    alignItems: 'center',
-    marginBottom: spacing[8],
-  },
-  logoWrapper: {
-    width: 56,
-    height: 56,
-    borderRadius: borderRadius.xl,
-    backgroundColor: colors.primary[500],
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing[3],
-  },
-  appName: {
-    fontSize: fontSize['2xl'],
-    fontWeight: fontWeight.bold,
-    color: colors.primary[500],
-    marginBottom: spacing[1],
-  },
-  tagline: {
-    fontSize: fontSize.sm,
-    color: colors.gray[500],
-    textAlign: 'center',
-  },
-  errorBox: {
-    backgroundColor: colors.emergency[50],
-    borderWidth: 1,
-    borderColor: colors.emergency[200],
-    borderRadius: borderRadius.md,
-    padding: spacing[4],
-    marginBottom: spacing[6],
-  },
-  errorText: {
-    color: colors.emergency[600],
-    fontSize: fontSize.sm,
-    textAlign: 'center',
-  },
-  nameRow: {
-    flexDirection: 'row',
-    gap: spacing[3],
-  },
-  nameField: {
-    flex: 1,
-  },
-  checkboxRow: {
+  form: { padding: spacing.xl },
+  row: { flexDirection: 'row', gap: spacing.md },
+  half: { flex: 1 },
+  consent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: spacing[3],
-    marginBottom: spacing[3],
-  },
-  marginBottom8: {
-    marginBottom: spacing[8],
+    marginBottom: spacing.md,
   },
   checkbox: {
-    width: 20,
-    height: 20,
-    marginTop: 2,
-    borderRadius: borderRadius.sm,
+    width: 24,
+    height: 24,
+    borderRadius: radii.sm,
     borderWidth: 2,
+    borderColor: colors.nhsBlue,
+    marginRight: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 2,
   },
   checkboxChecked: {
-    backgroundColor: colors.primary[500],
-    borderColor: colors.primary[500],
+    backgroundColor: colors.nhsBlue,
   },
-  checkboxUnchecked: {
-    borderColor: colors.gray[300],
-    backgroundColor: colors.white,
-  },
-  checkmark: {
-    color: colors.white,
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.bold,
-  },
-  checkboxLabel: {
+  consentText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
     flex: 1,
-    fontSize: fontSize.sm,
-    color: colors.gray[600],
+    lineHeight: 20,
   },
-  linkText: {
-    color: colors.primary[500],
-    fontWeight: fontWeight.medium,
+  consentLink: { color: colors.nhsBlue, fontWeight: '600' },
+  consentError: {
+    ...typography.caption,
+    color: colors.emergencyRed,
+    marginBottom: spacing.md,
   },
-  loginLinkRow: {
+  footer: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing[6],
-    marginBottom: spacing[8],
+    marginTop: spacing.xl,
   },
-  loginLinkLabel: {
-    color: colors.gray[500],
-    fontSize: fontSize.sm,
-  },
-  loginLinkAction: {
-    color: colors.primary[500],
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semibold,
+  footerText: { ...typography.bodySmall, color: colors.textSecondary },
+  linkBold: {
+    ...typography.bodySmall,
+    color: colors.nhsBlue,
+    fontWeight: '700',
   },
 });

@@ -1,171 +1,210 @@
+/**
+ * Authentication service — Section 4 of master instructions.
+ *
+ * Two flows, one session:
+ *   • Email + password via supabase.auth.signInWithPassword
+ *   • Google ID token via native @react-native-google-signin, passed to
+ *     supabase.auth.signInWithIdToken
+ *
+ * Both produce the same Supabase auth.users row. The post-auth hook
+ * (§4.9) then ensures a `responders` profile exists.
+ *
+ * NEVER use signInWithOAuth on native — that's the browser flow and is
+ * what caused the historical iOS crashes.
+ */
+
+import { Platform } from 'react-native';
+import {
+  GoogleSignin,
+  statusCodes,
+  isErrorWithCode,
+} from '@react-native-google-signin/google-signin';
+
 import { supabase } from './supabase';
-import type { Responder, AvailabilityStatus } from '@/types';
+import type { ResponderTier } from '@/types';
 
-export const authService = {
-  async signUp(
-    email: string,
-    password: string,
-    profile: {
-      firstName: string;
-      lastName: string;
-      phone?: string;
-    }
-  ) {
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+// ---------------------------------------------------------------------------
+// Email / password
+// ---------------------------------------------------------------------------
 
-    if (authError) throw authError;
-    if (!authData.user) throw new Error('Failed to create user');
-
-    // Create responder profile
-    const { error: profileError } = await supabase
-      .from('responders')
-      .insert({
-        id: authData.user.id,
-        email,
-        first_name: profile.firstName,
-        last_name: profile.lastName,
-        phone: profile.phone,
-      });
-
-    if (profileError) throw profileError;
-
-    return authData;
-  },
-
-  async signIn(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) throw error;
-    return data;
-  },
-
-  async signOut() {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-  },
-
-  async getSession() {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) throw error;
-    return data.session;
-  },
-
-  async getProfile(): Promise<Responder | null> {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return null;
-
-    const { data, error } = await supabase
-      .from('responders')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    if (error) throw error;
-    return transformResponder(data);
-  },
-
-  async updateProfile(updates: Partial<Responder>) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('responders')
-      .update(transformResponderForDb(updates))
-      .eq('id', user.id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return transformResponder(data);
-  },
-
-  async setAvailability(status: AvailabilityStatus) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { error } = await supabase
-      .from('responders')
-      .update({ availability: status })
-      .eq('id', user.id);
-
-    if (error) throw error;
-  },
-
-  onAuthStateChange(
-    callback: (event: string, session: unknown) => void
-  ) {
-    return supabase.auth.onAuthStateChange(callback);
-  },
-};
-
-// Transform database row to app model
-function transformResponder(row: Record<string, unknown>): Responder {
-  const r = row as Record<string, any>;
-  return {
-    id: r.id,
-    email: r.email,
-    phone: r.phone,
-    firstName: r.first_name,
-    lastName: r.last_name,
-    fullName: `${r.first_name} ${r.last_name}`,
-    profilePhotoUrl: r.profile_photo_url,
-    tier: r.tier,
-    availability: r.availability,
-    currentLocation: r.current_location
-      ? {
-          latitude: r.current_location.coordinates[1],
-          longitude: r.current_location.coordinates[0],
-        }
-      : null,
-    currentTransportMode: r.current_transport_mode,
-    locationUpdatedAt: r.location_updated_at,
-    alertRadiusKm: r.alert_radius_km,
-    smsFallbackEnabled: r.sms_fallback_enabled,
-    pushEnabled: r.push_enabled,
-    totalResponses: r.total_responses,
-    totalAccepted: r.total_accepted,
-    totalDeclined: r.total_declined,
-    averageResponseTimeSeconds: r.average_response_time_seconds,
-    locationConsent: r.location_consent,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
-    lastActiveAt: r.last_active_at,
-  };
+export async function signInWithEmail(email: string, password: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email.trim().toLowerCase(),
+    password,
+  });
+  if (error) throw error;
+  return data;
 }
 
-// Transform app model to database row for updates
-function transformResponderForDb(
-  updates: Partial<Responder>
-): Record<string, unknown> {
-  const dbUpdates: Record<string, unknown> = {};
+export interface SignUpMetadata {
+  firstName: string;
+  lastName: string;
+  phone?: string;
+}
 
-  if (updates.firstName !== undefined) dbUpdates.first_name = updates.firstName;
-  if (updates.lastName !== undefined) dbUpdates.last_name = updates.lastName;
-  if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
-  if (updates.profilePhotoUrl !== undefined)
-    dbUpdates.profile_photo_url = updates.profilePhotoUrl;
-  if (updates.availability !== undefined)
-    dbUpdates.availability = updates.availability;
-  if (updates.alertRadiusKm !== undefined)
-    dbUpdates.alert_radius_km = updates.alertRadiusKm;
-  if (updates.smsFallbackEnabled !== undefined)
-    dbUpdates.sms_fallback_enabled = updates.smsFallbackEnabled;
-  if (updates.pushEnabled !== undefined)
-    dbUpdates.push_enabled = updates.pushEnabled;
-  if (updates.locationConsent !== undefined)
-    dbUpdates.location_consent = updates.locationConsent;
+export async function signUpWithEmail(
+  email: string,
+  password: string,
+  metadata: SignUpMetadata
+) {
+  const { data, error } = await supabase.auth.signUp({
+    email: email.trim().toLowerCase(),
+    password,
+    options: {
+      data: {
+        first_name: metadata.firstName,
+        last_name: metadata.lastName,
+        phone: metadata.phone,
+      },
+    },
+  });
+  if (error) throw error;
+  return data;
+}
 
-  return dbUpdates;
+export async function sendPasswordResetEmail(email: string) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
+  if (error) throw error;
+}
+
+// ---------------------------------------------------------------------------
+// Google Sign-In
+// ---------------------------------------------------------------------------
+
+/**
+ * Returned shape has changed across @react-native-google-signin versions;
+ * we narrow it defensively before using the id token.
+ */
+function extractIdToken(result: unknown): string | null {
+  if (!result || typeof result !== 'object') return null;
+  const r = result as Record<string, unknown>;
+  // v14+ wraps the payload in `data`.
+  if (r.type === 'success' && r.data && typeof r.data === 'object') {
+    const d = r.data as Record<string, unknown>;
+    if (typeof d.idToken === 'string') return d.idToken;
+  }
+  // Legacy shape — idToken directly on the root.
+  if (typeof r.idToken === 'string') return r.idToken;
+  return null;
+}
+
+export async function signInWithGoogle() {
+  try {
+    if (Platform.OS === 'android') {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    }
+
+    const signInResult = await GoogleSignin.signIn();
+    const idToken = extractIdToken(signInResult);
+
+    if (!idToken) {
+      throw new Error(
+        'Google Sign-In succeeded but no id token was returned. ' +
+          'Verify webClientId is the WEB OAuth client (not Android).'
+      );
+    }
+
+    const { data, error } = await supabase.auth.signInWithIdToken({
+      provider: 'google',
+      token: idToken,
+    });
+    if (error) throw error;
+
+    return data;
+  } catch (error: unknown) {
+    if (isErrorWithCode(error)) {
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) return null;
+      if (error.code === statusCodes.IN_PROGRESS) return null;
+      if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        throw new Error('Google Play Services not available. Please update Google Play Services.');
+      }
+    }
+    throw error;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sign out — both providers
+// ---------------------------------------------------------------------------
+
+export async function signOut() {
+  try {
+    const isGoogleSignedIn = await GoogleSignin.getCurrentUser();
+    if (isGoogleSignedIn) {
+      await GoogleSignin.signOut();
+    }
+  } catch {
+    // Google sign-out failure is non-fatal — still sign out of Supabase.
+  }
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+}
+
+// ---------------------------------------------------------------------------
+// Post-auth: ensure responder profile exists (§4.9)
+// ---------------------------------------------------------------------------
+
+export async function ensureResponderProfile(): Promise<void> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) return;
+
+  const { data: existing, error: fetchError } = await supabase
+    .from('responders')
+    .select('id')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (fetchError && fetchError.code !== 'PGRST116') {
+    throw fetchError;
+  }
+  if (existing) return;
+
+  const fullName = typeof user.user_metadata?.full_name === 'string'
+    ? user.user_metadata.full_name
+    : '';
+  const [firstNameFromGoogle, ...rest] = fullName.split(' ');
+  const firstName =
+    (user.user_metadata?.first_name as string | undefined) ??
+    firstNameFromGoogle ??
+    '';
+  const lastName =
+    (user.user_metadata?.last_name as string | undefined) ??
+    rest.join(' ') ??
+    '';
+
+  const defaultTier: ResponderTier = 'tier4_witness';
+
+  const { error: insertError } = await supabase.from('responders').insert({
+    id: user.id,
+    email: user.email ?? '',
+    first_name: firstName,
+    last_name: lastName,
+    tier: defaultTier,
+    availability: 'unavailable',
+    location_consent: false,
+    sms_fallback_enabled: true,
+    push_enabled: true,
+    alert_radius_km: 5,
+  });
+
+  if (insertError) throw insertError;
+}
+
+// ---------------------------------------------------------------------------
+// Session helpers
+// ---------------------------------------------------------------------------
+
+export async function getCurrentSession() {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  return data.session;
+}
+
+export function onAuthStateChange(
+  callback: (event: string, session: Awaited<ReturnType<typeof getCurrentSession>>) => void
+) {
+  return supabase.auth.onAuthStateChange(callback);
 }

@@ -1,81 +1,76 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import type { ReactNode } from 'react';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '@/config/theme';
 
-interface HeaderProps {
+import { colors, spacing, touchTargets, typography } from '@/config/theme';
+
+interface Props {
   title: string;
   showBack?: boolean;
-  onBackPress?: () => void;
-  rightAction?: ReactNode;
+  rightAction?: React.ReactNode;
+  subtitle?: string;
 }
 
-export function Header({ title, showBack = true, onBackPress, rightAction }: HeaderProps) {
+export function Header({ title, showBack = false, rightAction, subtitle }: Props) {
   const router = useRouter();
-
-  const handleBack = () => {
-    if (onBackPress) {
-      onBackPress();
-    } else {
-      router.back();
-    }
-  };
-
   return (
-    <View style={styles.container}>
+    <View style={styles.container} accessibilityRole="header">
       <View style={styles.sideSlot}>
-        {showBack && (
-          <Pressable
-            onPress={handleBack}
-            style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+        {showBack && router.canGoBack() ? (
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
-            <ChevronLeft size={24} color={colors.gray[900]} />
-          </Pressable>
-        )}
+            <ChevronLeft size={24} color={colors.nhsBlue} />
+          </TouchableOpacity>
+        ) : null}
       </View>
 
-      <Text style={styles.title} numberOfLines={1}>
-        {title}
-      </Text>
+      <View style={styles.titleBlock}>
+        <Text style={styles.title} numberOfLines={1}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text style={styles.subtitle} numberOfLines={1}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
 
-      <View style={[styles.sideSlot, styles.rightSlot]}>{rightAction}</View>
+      <View style={styles.sideSlot}>{rightAction}</View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    height: 56,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing[4],
+    borderBottomColor: colors.border,
   },
   sideSlot: {
-    width: 40,
-  },
-  rightSlot: {
-    alignItems: 'flex-end',
-  },
-  backButton: {
-    height: 40,
-    width: 40,
+    width: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: borderRadius.full,
   },
-  pressed: {
-    backgroundColor: colors.gray[100],
+  backButton: {
+    width: touchTargets.recommended,
+    height: touchTargets.recommended,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  title: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.gray[900],
+  titleBlock: { flex: 1, alignItems: 'center' },
+  title: { ...typography.h3, color: colors.textPrimary },
+  subtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
 });

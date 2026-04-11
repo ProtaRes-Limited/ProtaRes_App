@@ -9,10 +9,14 @@ module.exports = function (api) {
           root: ['./'],
           alias: {
             '@': './src',
+            '@app': './app',
+            '@assets': './assets',
           },
+          extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
         },
       ],
-      'react-native-reanimated/plugin',
+      // react-native-reanimated/plugin MUST be last
+      'react-native-worklets/plugin',
     ],
   };
 };

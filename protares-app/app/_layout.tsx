@@ -1,99 +1,106 @@
-import { useEffect } from 'react';
-import { Stack } from 'expo-router';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { queryClient } from '@/lib/queryClient';
-import { useAuthStore } from '@/stores/auth';
-import { useEmergencyStore } from '@/stores/emergency';
-import type { Responder, Emergency } from '@/types';
-import { StatusBar } from 'expo-status-bar';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+/**
+ * Root layout — Section 4.6 of master instructions.
+ *
+ *   • `GoogleSignin.configure(...)` MUST run once, synchronously, before
+ *     any component that might trigger a sign-in renders.
+ *   • The QueryClientProvider wraps the entire navigation tree so every
+ *     screen shares a single cache.
+ *   • The ErrorBoundary is the outermost wrapper so a render-phase crash
+ *     still leaves a visible 999 CTA for the responder.
+ *   • Navigation guards below redirect unauthenticated users to /login
+ *     and prevent authenticated users from visiting (auth) routes.
+ */
 
-function useDevMockData() {
-  const setUser = useAuthStore((s) => s.setUser);
-  const user = useAuthStore((s) => s.user);
-  const addPendingAlert = useEmergencyStore((s) => s.addPendingAlert);
-  const pendingAlerts = useEmergencyStore((s) => s.pendingAlerts);
+import 'react-native-gesture-handler';
+
+import React, { useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
+import { Slot, useRouter, useSegments } from 'expo-router';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+
+import { env } from '@/config/env';
+import { initSentry } from '@/lib/sentry';
+import { queryClient } from '@/lib/queryClient';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { useAuth } from '@/hooks/useAuth';
+import { colors } from '@/config/theme';
+
+// Run these once, module-scope, before any component mounts.
+SplashScreen.preventAutoHideAsync().catch(() => {
+  /* no-op — preventAutoHideAsync is best-effort */
+});
+initSentry();
+GoogleSignin.configure({
+  webClientId: env.google.webClientId,
+  iosClientId: env.google.iosClientId,
+  offlineAccess: true,
+  scopes: [
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+  ],
+});
+
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { session, initialised, loading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
 
   useEffect(() => {
-    if (__DEV__ && !user) {
-      const mockUser: Responder = {
-        id: 'dev-user-001',
-        email: 'dr.sarah.johnson@nhs.net',
-        phone: '+447700900123',
-        firstName: 'Sarah',
-        lastName: 'Johnson',
-        fullName: 'Dr. Sarah Johnson',
-        profilePhotoUrl: null,
-        tier: 'tier1_active_healthcare',
-        availability: 'available',
-        currentLocation: { latitude: 51.5074, longitude: -0.1278 },
-        currentTransportMode: 'stationary',
-        locationUpdatedAt: new Date().toISOString(),
-        alertRadiusKm: 5,
-        smsFallbackEnabled: true,
-        pushEnabled: true,
-        totalResponses: 47,
-        totalAccepted: 12,
-        totalDeclined: 3,
-        averageResponseTimeSeconds: 272,
-        locationConsent: true,
-        createdAt: '2025-01-15T10:00:00Z',
-        updatedAt: new Date().toISOString(),
-        lastActiveAt: new Date().toISOString(),
-      };
-      setUser(mockUser);
-    }
+    if (!initialised) return;
 
-    if (__DEV__ && pendingAlerts.length === 0) {
-      const mockAlert: Emergency = {
-        id: 'emg-001',
-        emergencyType: 'cardiac_arrest',
-        severity: 'critical',
-        status: 'dispatched',
-        location: { latitude: 51.5095, longitude: -0.1335 },
-        locationAddress: 'Victoria Station, London SW1V 1JU',
-        locationDescription: 'Platform 3, near ticket barriers',
-        what3words: null,
-        reportedBy: null,
-        reporterPhone: '+447700900456',
-        reporterName: 'Witness',
-        description: 'Man collapsed on platform, not breathing',
-        casualtyCount: 1,
-        casualtiesConscious: false,
-        casualtiesBreathing: false,
-        witnessStreamActive: false,
-        witnessStreamUrl: null,
-        equipmentRequested: ['aed'],
-        equipmentDelivered: [],
-        ambulanceNotified: true,
-        ambulanceNotifiedAt: new Date().toISOString(),
-        ambulanceEtaMinutes: 12,
-        policeNotified: false,
-        fireNotified: false,
-        createdAt: new Date(Date.now() - 120000).toISOString(),
-        updatedAt: new Date().toISOString(),
-        resolvedAt: null,
-        distanceMeters: 450,
-        etaMinutes: 3,
-      };
-      addPendingAlert(mockAlert);
+    SplashScreen.hideAsync().catch(() => {
+      /* ignore */
+    });
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (!session && !inAuthGroup) {
+      router.replace('/(auth)/login');
+    } else if (session && inAuthGroup) {
+      router.replace('/(tabs)');
     }
-  }, [setUser, user, addPendingAlert, pendingAlerts.length]);
+  }, [initialised, session, segments, router]);
+
+  if (!initialised || loading) {
+    return (
+      <View style={styles.loading}>
+        <LoadingSpinner label="Starting ProtaRes…" />
+      </View>
+    );
+  }
+
+  return <>{children}</>;
 }
 
 export default function RootLayout() {
-  useDevMockData();
-
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <StatusBar style="auto" />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="emergency" options={{ presentation: 'modal' }} />
-        </Stack>
-      </QueryClientProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={styles.flex}>
+        <SafeAreaProvider>
+          <QueryClientProvider client={queryClient}>
+            <StatusBar style="dark" backgroundColor={colors.background} />
+            <AuthGate>
+              <Slot />
+            </AuthGate>
+          </QueryClientProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
+});

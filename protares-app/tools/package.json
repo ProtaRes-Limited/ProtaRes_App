@@ -1,0 +1,13 @@
+{
+  "name": "protares-icon-tools",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Build-time tools for generating ProtaRes brand assets. Not shipped with the app.",
+  "type": "module",
+  "scripts": {
+    "generate-icons": "node generate-icons.mjs"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2"
+  }
+}

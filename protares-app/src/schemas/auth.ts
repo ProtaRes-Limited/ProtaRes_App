@@ -1,102 +1,62 @@
 import { z } from 'zod';
 
-export const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, 'Email is required')
-    .email('Please enter a valid email address'),
-  password: z
-    .string()
-    .min(1, 'Password is required')
-    .min(8, 'Password must be at least 8 characters'),
-});
+/**
+ * Auth form schemas. We intentionally keep messages short and plain
+ * English — responders will read these under stress.
+ */
 
-export type LoginFormData = z.infer<typeof loginSchema>;
+export const emailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(1, 'Email is required')
+  .email('Please enter a valid email');
+
+/**
+ * NCSC advises password length > complexity. We require 10+ chars
+ * with at least one letter and one number — easier to type quickly
+ * than a 14-char mixed-case symbol requirement but still secure.
+ */
+export const passwordSchema = z
+  .string()
+  .min(10, 'Password must be at least 10 characters')
+  .refine((v) => /[a-zA-Z]/.test(v), 'Must contain a letter')
+  .refine((v) => /\d/.test(v), 'Must contain a number');
+
+export const phoneSchema = z
+  .string()
+  .trim()
+  .refine(
+    (v) => v === '' || /^\+?[0-9\s-]{10,15}$/.test(v),
+    'Please enter a valid phone number'
+  )
+  .optional();
+
+export const loginSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, 'Password is required'),
+});
+export type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const registerSchema = z
   .object({
-    firstName: z
-      .string()
-      .min(1, 'First name is required')
-      .min(2, 'First name must be at least 2 characters')
-      .max(50, 'First name must be less than 50 characters')
-      .regex(
-        /^[a-zA-Z\s\-']+$/,
-        'First name can only contain letters, spaces, hyphens, and apostrophes'
-      ),
-
-    lastName: z
-      .string()
-      .min(1, 'Last name is required')
-      .min(2, 'Last name must be at least 2 characters')
-      .max(50, 'Last name must be less than 50 characters')
-      .regex(
-        /^[a-zA-Z\s\-']+$/,
-        'Last name can only contain letters, spaces, hyphens, and apostrophes'
-      ),
-
-    email: z
-      .string()
-      .min(1, 'Email is required')
-      .email('Please enter a valid email address'),
-
-    phone: z
-      .string()
-      .min(1, 'Phone number is required')
-      .regex(
-        /^(\+44|0)[0-9]{10,11}$/,
-        'Please enter a valid UK phone number'
-      ),
-
-    password: z
-      .string()
-      .min(1, 'Password is required')
-      .min(8, 'Password must be at least 8 characters')
-      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-      .regex(/[0-9]/, 'Password must contain at least one number'),
-
-    confirmPassword: z.string().min(1, 'Please confirm your password'),
-
-    acceptTerms: z
-      .boolean()
-      .refine((val) => val === true, 'You must accept the terms and conditions'),
-
-    acceptPrivacy: z
-      .boolean()
-      .refine((val) => val === true, 'You must accept the privacy policy'),
+    firstName: z.string().trim().min(1, 'First name is required').max(60),
+    lastName: z.string().trim().min(1, 'Last name is required').max(60),
+    email: emailSchema,
+    phone: phoneSchema,
+    password: passwordSchema,
+    confirmPassword: z.string(),
+    acceptTerms: z.literal(true, {
+      message: 'You must accept the privacy notice to continue',
+    }),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match',
+  .refine((d) => d.password === d.confirmPassword, {
     path: ['confirmPassword'],
+    message: 'Passwords do not match',
   });
-
-export type RegisterFormData = z.infer<typeof registerSchema>;
+export type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export const forgotPasswordSchema = z.object({
-  email: z
-    .string()
-    .min(1, 'Email is required')
-    .email('Please enter a valid email address'),
+  email: emailSchema,
 });
-
-export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
-
-export const resetPasswordSchema = z
-  .object({
-    password: z
-      .string()
-      .min(1, 'Password is required')
-      .min(8, 'Password must be at least 8 characters')
-      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-      .regex(/[0-9]/, 'Password must contain at least one number'),
-
-    confirmPassword: z.string().min(1, 'Please confirm your password'),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match',
-    path: ['confirmPassword'],
-  });
-
-export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;

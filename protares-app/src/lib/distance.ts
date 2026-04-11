@@ -1,62 +1,53 @@
-import type { Coordinates, TransportMode } from '@/types';
-import { haversineDistance } from './utils';
+import type { Coordinates } from '@/types';
+
+const EARTH_RADIUS_M = 6_371_000;
+
+/** Haversine great-circle distance in metres. */
+export function haversineDistance(a: Coordinates, b: Coordinates): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLng = toRad(b.longitude - a.longitude);
+
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+  return EARTH_RADIUS_M * c;
+}
+
+/** Format a metres value into a short human-readable string. */
+export function formatDistance(meters: number): string {
+  if (meters < 1000) return `${Math.round(meters)} m`;
+  if (meters < 10_000) return `${(meters / 1000).toFixed(1)} km`;
+  return `${Math.round(meters / 1000)} km`;
+}
 
 /**
- * Average speeds in meters per second for each transport mode.
+ * Rough travel-time estimate given a distance and transport mode.
+ * For display only; the real dispatch ETA comes from the Corridor Algorithm
+ * and Google Directions API.
  */
-const AVERAGE_SPEEDS: Record<TransportMode, number> = {
-  stationary: 0,
-  walking: 1.4, // ~5 km/h
-  cycling: 5.5, // ~20 km/h
-  bus: 6.9, // ~25 km/h (accounting for stops)
-  train: 13.9, // ~50 km/h (accounting for stops)
-  driving: 8.3, // ~30 km/h (urban average)
-  unknown: 1.4, // Default to walking
-};
-
-/**
- * Estimate travel time in seconds from origin to destination
- * based on the transport mode.
- */
-export function estimateTravelTime(
-  origin: Coordinates,
-  destination: Coordinates,
-  transportMode: TransportMode
+export function estimateTravelTimeSeconds(
+  meters: number,
+  mode: 'walking' | 'cycling' | 'driving' | 'stationary' = 'walking'
 ): number {
-  const distance = haversineDistance(origin, destination);
-  const speed = AVERAGE_SPEEDS[transportMode];
-
-  if (speed <= 0) return Infinity;
-
-  // Apply a detour factor (straight-line distance is shorter than actual travel)
-  const detourFactor = transportMode === 'walking' || transportMode === 'cycling' ? 1.3 : 1.4;
-
-  return (distance * detourFactor) / speed;
+  const speedsMps: Record<string, number> = {
+    walking: 1.4,
+    cycling: 4.2,
+    driving: 11.1, // 40 km/h urban average
+    stationary: 1.0,
+  };
+  const speed = speedsMps[mode] ?? 1.4;
+  return Math.round(meters / speed);
 }
 
-/**
- * Check if a coordinate is within a given radius (in km) of a center point.
- */
-export function isWithinRadius(
-  point: Coordinates,
-  center: Coordinates,
-  radiusKm: number
-): boolean {
-  const distanceMeters = haversineDistance(point, center);
-  return distanceMeters <= radiusKm * 1000;
-}
-
-/**
- * Sort an array of items with a location by distance from a reference point.
- */
-export function sortByDistance<T extends { location: Coordinates }>(
-  items: T[],
-  from: Coordinates
-): (T & { distanceMeters: number })[] {
-  return items
-    .map((item) => ({
-      ...item,
-      distanceMeters: haversineDistance(from, item.location),
-    }))
-    .sort((a, b) => a.distanceMeters - b.distanceMeters);
+export function formatEta(seconds: number): string {
+  if (seconds < 60) return `${seconds} s`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
+  return `${hours}h ${remaining}m`;
 }

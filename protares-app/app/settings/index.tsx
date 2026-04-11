@@ -1,302 +1,166 @@
-import { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React from 'react';
+import { StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import {
-  Volume2,
-  Vibrate,
-  Bell,
-  Lock,
-  Info,
-  ChevronRight,
-} from 'lucide-react-native';
-import type { LucideIcon } from 'lucide-react-native';
+import { Minus, Plus } from 'lucide-react-native';
+
 import { Screen } from '@/components/layout/Screen';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
-import { colors, spacing, borderRadius, fontSize, fontWeight, shadows } from '@/config/theme';
+import { useAuthStore } from '@/stores/auth';
+import { useUpdateProfile } from '@/hooks/useProfile';
+import { colors, radii, spacing, touchTargets, typography } from '@/config/theme';
 
-function Toggle({
-  value,
-  onToggle,
-}: {
-  value: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onToggle}
-      style={[
-        styles.toggleBase,
-        value ? styles.toggleOn : styles.toggleOff,
-      ]}
-    >
-      <View
-        style={[
-          styles.toggleKnob,
-          value ? styles.toggleKnobOn : styles.toggleKnobOff,
-        ]}
-      />
-    </Pressable>
-  );
-}
-
-interface SettingsNavItemProps {
-  icon: LucideIcon;
-  label: string;
-  description: string;
-  onPress: () => void;
-}
-
-function SettingsNavItem({
-  icon: Icon,
-  label,
-  description,
-  onPress,
-}: SettingsNavItemProps) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.navItem,
-        pressed && { backgroundColor: colors.gray[50] },
-      ]}
-    >
-      <View style={styles.navIconCircle}>
-        <Icon size={20} color="#005EB8" />
-      </View>
-      <View style={styles.navTextBlock}>
-        <Text style={styles.navLabel}>{label}</Text>
-        <Text style={styles.navDescription}>{description}</Text>
-      </View>
-      <ChevronRight size={18} color="#9CA3AF" />
-    </Pressable>
-  );
-}
+const MIN_RADIUS_KM = 0.5;
+const MAX_RADIUS_KM = 20;
+const RADIUS_STEP_KM = 0.5;
 
 export default function SettingsScreen() {
+  const user = useAuthStore((s) => s.user);
+  const updateProfile = useUpdateProfile();
   const router = useRouter();
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [vibrationEnabled, setVibrationEnabled] = useState(true);
+
+  if (!user) return null;
+
+  const clampRadius = (value: number) =>
+    Math.min(MAX_RADIUS_KM, Math.max(MIN_RADIUS_KM, Math.round(value * 2) / 2));
+
+  const handleRadiusDelta = (delta: number) => {
+    const next = clampRadius(user.alertRadiusKm + delta);
+    if (next !== user.alertRadiusKm) {
+      updateProfile.mutate({ alertRadiusKm: next });
+    }
+  };
+
+  const handleToggleSms = (value: boolean) => {
+    updateProfile.mutate({ smsFallbackEnabled: value });
+  };
+
+  const handleTogglePush = (value: boolean) => {
+    updateProfile.mutate({ pushEnabled: value });
+  };
 
   return (
-    <Screen safeArea padded={false}>
-      <Header title="Settings" />
-      <View style={styles.container}>
-        {/* Alert Preferences */}
-        <Text style={styles.sectionTitleTop}>
-          Alert Preferences
-        </Text>
+    <Screen scrollable padded={false}>
+      <Header title="Settings" showBack />
 
-        <Card variant="outlined" style={styles.sectionCard}>
-          <View style={styles.toggleRowBordered}>
-            <View style={styles.toggleRowLeft}>
-              <View style={styles.toggleIconCircle}>
-                <Volume2 size={20} color="#005EB8" />
-              </View>
-              <View style={styles.toggleTextBlock}>
-                <Text style={styles.toggleLabel}>
-                  Sound
-                </Text>
-                <Text style={styles.toggleDescription}>
-                  Play alert sounds for emergencies
-                </Text>
-              </View>
-            </View>
-            <Toggle
-              value={soundEnabled}
-              onToggle={() => setSoundEnabled(!soundEnabled)}
-            />
+      <View style={styles.body}>
+        <Card elevated style={styles.card}>
+          <Text style={styles.sectionTitle}>Alert radius</Text>
+          <Text style={styles.sectionBody}>
+            Only emergencies within {user.alertRadiusKm.toFixed(1)} km will alert
+            you.
+          </Text>
+          <View style={styles.stepperRow}>
+            <TouchableOpacity
+              style={styles.stepperButton}
+              onPress={() => handleRadiusDelta(-RADIUS_STEP_KM)}
+              accessibilityRole="button"
+              accessibilityLabel="Decrease alert radius"
+              disabled={user.alertRadiusKm <= MIN_RADIUS_KM}
+            >
+              <Minus size={20} color={colors.nhsBlue} />
+            </TouchableOpacity>
+            <Text style={styles.stepperValue}>
+              {user.alertRadiusKm.toFixed(1)} km
+            </Text>
+            <TouchableOpacity
+              style={styles.stepperButton}
+              onPress={() => handleRadiusDelta(RADIUS_STEP_KM)}
+              accessibilityRole="button"
+              accessibilityLabel="Increase alert radius"
+              disabled={user.alertRadiusKm >= MAX_RADIUS_KM}
+            >
+              <Plus size={20} color={colors.nhsBlue} />
+            </TouchableOpacity>
           </View>
+        </Card>
 
+        <Card elevated style={styles.card}>
           <View style={styles.toggleRow}>
-            <View style={styles.toggleRowLeft}>
-              <View style={styles.toggleIconCircle}>
-                <Vibrate size={20} color="#005EB8" />
-              </View>
-              <View style={styles.toggleTextBlock}>
-                <Text style={styles.toggleLabel}>
-                  Vibration
-                </Text>
-                <Text style={styles.toggleDescription}>
-                  Haptic feedback for alerts
-                </Text>
-              </View>
+            <View style={styles.toggleText}>
+              <Text style={styles.sectionTitle}>Push notifications</Text>
+              <Text style={styles.sectionBody}>
+                Receive emergency alerts on this device.
+              </Text>
             </View>
-            <Toggle
-              value={vibrationEnabled}
-              onToggle={() => setVibrationEnabled(!vibrationEnabled)}
+            <Switch
+              value={user.pushEnabled}
+              onValueChange={handleTogglePush}
+              trackColor={{ true: colors.nhsBlue, false: colors.grey2 }}
+              thumbColor={colors.white}
+              accessibilityLabel="Toggle push notifications"
             />
           </View>
         </Card>
 
-        {/* Navigation Items */}
-        <Text style={styles.sectionTitle}>General</Text>
-
-        <Card variant="outlined" style={styles.sectionCard}>
-          <SettingsNavItem
-            icon={Bell}
-            label="Notifications"
-            description="Push notification and SMS preferences"
-            onPress={() => {
-              // Navigate to notifications settings
-            }}
-          />
-          <SettingsNavItem
-            icon={Lock}
-            label="Privacy"
-            description="Location tracking and data preferences"
-            onPress={() => router.push('/settings/privacy')}
-          />
-          <SettingsNavItem
-            icon={Info}
-            label="About"
-            description="App version, legal information"
-            onPress={() => {
-              // Navigate to about screen
-            }}
-          />
+        <Card elevated style={styles.card}>
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleText}>
+              <Text style={styles.sectionTitle}>SMS fallback</Text>
+              <Text style={styles.sectionBody}>
+                If push fails, send critical alerts via SMS.
+              </Text>
+            </View>
+            <Switch
+              value={user.smsFallbackEnabled}
+              onValueChange={handleToggleSms}
+              trackColor={{ true: colors.nhsBlue, false: colors.grey2 }}
+              thumbColor={colors.white}
+              accessibilityLabel="Toggle SMS fallback"
+            />
+          </View>
         </Card>
 
-        {/* App Info */}
-        <View style={styles.appInfo}>
-          <Text style={styles.appInfoVersion}>
-            ProtaRes v1.0.0
+        <Card
+          elevated
+          style={styles.card}
+          onTouchEnd={() => router.push('/settings/privacy')}
+        >
+          <Text style={styles.sectionTitle}>Privacy & data</Text>
+          <Text style={styles.sectionBody}>
+            Manage consent, export your data, or delete your account.
           </Text>
-          <Text style={styles.appInfoTagline}>
-            Community Emergency Response Network
-          </Text>
-        </View>
+        </Card>
       </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: spacing[4],
-  },
-  toggleBase: {
-    width: 48,
-    height: 28,
-    borderRadius: borderRadius.full,
-    justifyContent: 'center',
-    paddingHorizontal: spacing[0.5],
-  },
-  toggleOn: {
-    backgroundColor: colors.primary[500],
-  },
-  toggleOff: {
-    backgroundColor: colors.gray[300],
-  },
-  toggleKnob: {
-    width: 24,
-    height: 24,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.white,
-    ...shadows.sm,
-  },
-  toggleKnobOn: {
-    alignSelf: 'flex-end',
-  },
-  toggleKnobOff: {
-    alignSelf: 'flex-start',
-  },
-  navItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    paddingVertical: spacing[4],
-    borderBottomWidth: 1,
-    borderColor: colors.gray[100],
-  },
-  navIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.gray[100],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navTextBlock: {
-    flex: 1,
-  },
-  navLabel: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.medium,
-    color: colors.gray[900],
-  },
-  navDescription: {
-    fontSize: fontSize.sm,
-    color: colors.gray[500],
-  },
-  sectionTitleTop: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.gray[900],
-    marginTop: spacing[4],
-    marginBottom: spacing[3],
-  },
+  body: { padding: spacing.lg, gap: spacing.md },
+  card: { padding: spacing.lg, gap: spacing.sm },
   sectionTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.gray[900],
-    marginBottom: spacing[3],
+    ...typography.h3,
+    color: colors.textPrimary,
   },
-  sectionCard: {
-    marginBottom: spacing[6],
-  },
-  toggleRowBordered: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing[3],
-    borderBottomWidth: 1,
-    borderColor: colors.gray[100],
+  sectionBody: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: spacing[3],
+    gap: spacing.md,
   },
-  toggleRowLeft: {
+  toggleText: { flex: 1 },
+  stepperRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[3],
-    flex: 1,
+    justifyContent: 'space-between',
+    marginTop: spacing.md,
   },
-  toggleIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.gray[100],
+  stepperButton: {
+    width: touchTargets.recommended,
+    height: touchTargets.recommended,
+    borderRadius: radii.md,
+    borderWidth: 2,
+    borderColor: colors.nhsBlue,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  toggleTextBlock: {
-    flex: 1,
-  },
-  toggleLabel: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.medium,
-    color: colors.gray[900],
-  },
-  toggleDescription: {
-    fontSize: fontSize.sm,
-    color: colors.gray[500],
-  },
-  appInfo: {
-    alignItems: 'center',
-    marginBottom: spacing[8],
-  },
-  appInfoVersion: {
-    fontSize: fontSize.xs,
-    color: colors.gray[400],
-  },
-  appInfoTagline: {
-    fontSize: fontSize.xs,
-    color: colors.gray[300],
-    marginTop: spacing[1],
+  stepperValue: {
+    ...typography.h2,
+    color: colors.nhsBlue,
   },
 });

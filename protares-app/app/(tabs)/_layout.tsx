@@ -1,28 +1,27 @@
+import React from 'react';
 import { Tabs } from 'expo-router';
 import { Home, Bell, Map, Clock, User } from 'lucide-react-native';
-import { View, Text, StyleSheet } from 'react-native';
-import { useEmergencyStore } from '@/stores/emergency';
-import { colors, fontWeight } from '@/config/theme';
 
-export default function TabLayout() {
-  const pendingAlerts = useEmergencyStore((s) => s.pendingAlerts);
+import { colors, typography } from '@/config/theme';
 
+export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary[500],
-        tabBarInactiveTintColor: colors.gray[400],
+        tabBarActiveTintColor: colors.nhsBlue,
+        tabBarInactiveTintColor: colors.grey3,
         tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
           borderTopWidth: 1,
-          borderTopColor: colors.gray[200],
-          height: 60,
+          height: 64,
           paddingBottom: 8,
           paddingTop: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: fontWeight.semibold,
+          ...typography.caption,
+          fontWeight: '600',
         },
       }}
     >
@@ -31,22 +30,15 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
+          tabBarAccessibilityLabel: 'Home tab',
         }}
       />
       <Tabs.Screen
         name="alerts"
         options={{
           title: 'Alerts',
-          tabBarIcon: ({ color, size }) => (
-            <View>
-              <Bell size={size} color={color} />
-              {pendingAlerts.length > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{pendingAlerts.length}</Text>
-                </View>
-              )}
-            </View>
-          ),
+          tabBarIcon: ({ color, size }) => <Bell size={size} color={color} />,
+          tabBarAccessibilityLabel: 'Emergency alerts tab',
         }}
       />
       <Tabs.Screen
@@ -54,6 +46,7 @@ export default function TabLayout() {
         options={{
           title: 'Map',
           tabBarIcon: ({ color, size }) => <Map size={size} color={color} />,
+          tabBarAccessibilityLabel: 'Map tab',
         }}
       />
       <Tabs.Screen
@@ -61,6 +54,7 @@ export default function TabLayout() {
         options={{
           title: 'History',
           tabBarIcon: ({ color, size }) => <Clock size={size} color={color} />,
+          tabBarAccessibilityLabel: 'History tab',
         }}
       />
       <Tabs.Screen
@@ -68,27 +62,9 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
+          tabBarAccessibilityLabel: 'Profile tab',
         }}
       />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  badge: {
-    position: 'absolute',
-    top: -4,
-    right: -8,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: colors.emergency[500],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    color: colors.white,
-    fontSize: 9,
-    fontWeight: fontWeight.bold,
-  },
-});

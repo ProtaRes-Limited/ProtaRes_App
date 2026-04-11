@@ -1,75 +1,58 @@
-import { View, Text, StyleSheet } from 'react-native';
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { Check } from 'lucide-react-native';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '@/config/theme';
 
-type StepStatus = 'completed' | 'active' | 'pending';
+import { colors, radii, spacing, typography } from '@/config/theme';
+import type { EmergencyStatus } from '@/types';
 
-const STEPS = ['Accepted', 'En Route', 'On Scene', 'Handover', 'Complete'] as const;
+const steps: Array<{ status: EmergencyStatus; label: string }> = [
+  { status: 'dispatched', label: 'Dispatched' },
+  { status: 'responder_en_route', label: 'En route' },
+  { status: 'responder_on_scene', label: 'On scene' },
+  { status: 'handover_complete', label: 'Handover' },
+  { status: 'resolved', label: 'Resolved' },
+];
 
-type Step = (typeof STEPS)[number];
+const order: Record<string, number> = steps.reduce(
+  (acc, step, idx) => ({ ...acc, [step.status]: idx }),
+  {}
+);
 
-interface StatusStepperProps {
-  currentStep: Step;
+interface Props {
+  currentStatus: EmergencyStatus;
 }
 
-function getStepStatus(stepIndex: number, currentIndex: number): StepStatus {
-  if (stepIndex < currentIndex) return 'completed';
-  if (stepIndex === currentIndex) return 'active';
-  return 'pending';
-}
-
-function getCircleColor(status: StepStatus): string {
-  if (status === 'completed') return colors.success[500];
-  if (status === 'active') return colors.primary[500];
-  return colors.gray[300];
-}
-
-function getLabelColor(status: StepStatus): string {
-  if (status === 'completed') return colors.success[600];
-  if (status === 'active') return colors.primary[600];
-  return colors.gray[400];
-}
-
-export function StatusStepper({ currentStep }: StatusStepperProps) {
-  const currentIndex = STEPS.indexOf(currentStep);
+export function StatusStepper({ currentStatus }: Props) {
+  const currentIndex = order[currentStatus] ?? 0;
 
   return (
-    <View style={styles.container}>
-      {STEPS.map((step, index) => {
-        const status = getStepStatus(index, currentIndex);
-        const isLast = index === STEPS.length - 1;
-
+    <View style={styles.container} accessibilityRole="progressbar">
+      {steps.map((step, idx) => {
+        const isDone = idx < currentIndex;
+        const isCurrent = idx === currentIndex;
         return (
-          <View key={step} style={styles.stepWrapper}>
-            <View style={styles.stepColumn}>
-              <View style={[styles.circle, { backgroundColor: getCircleColor(status) }]}>
-                {status === 'completed' ? (
-                  <Check size={14} color={colors.white} />
-                ) : (
-                  <Text style={[styles.circleText, status === 'active' && styles.activeCircleText]}>
-                    {index + 1}
-                  </Text>
-                )}
-              </View>
-              <Text
-                style={[
-                  styles.label,
-                  { color: getLabelColor(status) },
-                  (status === 'completed' || status === 'active') && styles.labelBold,
-                ]}
-                numberOfLines={1}
-              >
-                {step}
-              </Text>
+          <View key={step.status} style={styles.stepWrap}>
+            <View
+              style={[
+                styles.dot,
+                isDone && styles.dotDone,
+                isCurrent && styles.dotCurrent,
+              ]}
+            >
+              {isDone ? <Check size={12} color={colors.white} /> : null}
             </View>
-            {!isLast && (
-              <View
-                style={[
-                  styles.connector,
-                  { backgroundColor: index < currentIndex ? colors.success[500] : colors.gray[300] },
-                ]}
-              />
-            )}
+            <Text
+              style={[
+                styles.label,
+                (isDone || isCurrent) && styles.labelActive,
+              ]}
+              numberOfLines={1}
+            >
+              {step.label}
+            </Text>
+            {idx < steps.length - 1 ? (
+              <View style={[styles.bar, isDone && styles.barDone]} />
+            ) : null}
           </View>
         );
       })}
@@ -80,44 +63,42 @@ export function StatusStepper({ currentStep }: StatusStepperProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing[2],
+    alignItems: 'flex-start',
+    paddingVertical: spacing.md,
   },
-  stepWrapper: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  stepColumn: {
-    alignItems: 'center',
-  },
-  circle: {
-    height: 28,
-    width: 28,
+  stepWrap: { flex: 1, alignItems: 'center', flexDirection: 'column' },
+  dot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.grey1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: borderRadius.full,
   },
-  circleText: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.bold,
-    color: colors.gray[500],
-  },
-  activeCircleText: {
-    color: colors.white,
+  dotDone: { backgroundColor: colors.successGreen },
+  dotCurrent: {
+    backgroundColor: colors.nhsBlue,
+    borderWidth: 3,
+    borderColor: colors.nhsLightBlue,
   },
   label: {
-    marginTop: spacing[1],
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
     textAlign: 'center',
-    fontSize: 10,
   },
-  labelBold: {
-    fontWeight: fontWeight.semibold,
+  labelActive: {
+    color: colors.textPrimary,
+    fontWeight: '600',
   },
-  connector: {
-    marginHorizontal: spacing[1],
+  bar: {
+    position: 'absolute',
+    top: 12,
+    left: '55%',
+    right: '-45%',
     height: 2,
-    flex: 1,
+    backgroundColor: colors.grey1,
+    borderRadius: radii.pill,
   },
+  barDone: { backgroundColor: colors.successGreen },
 });

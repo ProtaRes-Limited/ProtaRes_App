@@ -1,140 +1,125 @@
-import { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
-import type { KeyboardTypeOptions } from 'react-native';
-import { Eye, EyeOff } from 'lucide-react-native';
-import { colors, spacing, borderRadius, fontSize, fontWeight } from '@/config/theme';
+import React, { forwardRef, useState } from 'react';
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  type TextInputProps,
+  View,
+} from 'react-native';
 
-interface InputProps {
-  label?: string;
-  placeholder?: string;
-  value?: string;
-  onChangeText?: (text: string) => void;
+import { colors, radii, spacing, touchTargets, typography } from '@/config/theme';
+
+interface Props extends Omit<TextInputProps, 'style'> {
+  label: string;
   error?: string;
-  helperText?: string;
-  secureTextEntry?: boolean;
-  keyboardType?: KeyboardTypeOptions;
-  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  disabled?: boolean;
-  multiline?: boolean;
-  numberOfLines?: number;
+  hint?: string;
+  required?: boolean;
+  leftAdornment?: React.ReactNode;
+  rightAdornment?: React.ReactNode;
 }
 
-export function Input({
-  label,
-  placeholder,
-  value,
-  onChangeText,
-  error,
-  helperText,
-  secureTextEntry = false,
-  keyboardType,
-  autoCapitalize,
-  disabled = false,
-  multiline = false,
-  numberOfLines = 1,
-}: InputProps) {
-  const [showPassword, setShowPassword] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-  const isPassword = secureTextEntry;
-  const isSecure = isPassword && !showPassword;
-
-  const borderColor = error
-    ? colors.emergency[500]
-    : isFocused
-      ? colors.primary[500]
-      : colors.gray[300];
+/**
+ * Input field with visible label + error state.
+ *
+ * NHS guidance: never rely on placeholder text alone as a label. Every
+ * input has a persistent label for screen readers and for users who
+ * have autofill wipe the placeholder mid-interaction.
+ */
+export const Input = forwardRef<TextInput, Props>(function Input(
+  { label, error, hint, required, leftAdornment, rightAdornment, ...rest },
+  ref
+) {
+  const [focused, setFocused] = useState(false);
 
   return (
     <View style={styles.container}>
-      {label && <Text style={styles.label}>{label}</Text>}
-      <View style={styles.inputWrapper}>
+      <Text style={styles.label}>
+        {label}
+        {required ? <Text style={styles.required}> *</Text> : null}
+      </Text>
+
+      <View
+        style={[
+          styles.fieldContainer,
+          focused && styles.fieldContainerFocused,
+          !!error && styles.fieldContainerError,
+        ]}
+      >
+        {leftAdornment ? <View style={styles.adornment}>{leftAdornment}</View> : null}
         <TextInput
-          style={[
-            styles.input,
-            { borderColor, borderWidth: isFocused || error ? 2 : 1 },
-            disabled && styles.disabled,
-            multiline && styles.multiline,
-            isPassword && styles.paddingRight,
-          ]}
-          placeholder={placeholder}
-          placeholderTextColor={colors.gray[400]}
-          value={value}
-          onChangeText={onChangeText}
-          secureTextEntry={isSecure}
-          keyboardType={keyboardType}
-          autoCapitalize={autoCapitalize}
-          editable={!disabled}
-          multiline={multiline}
-          numberOfLines={numberOfLines}
-          textAlignVertical={multiline ? 'top' : 'center'}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          ref={ref}
+          placeholderTextColor={colors.grey3}
+          {...rest}
+          style={styles.input}
+          onFocus={(e) => {
+            setFocused(true);
+            rest.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            rest.onBlur?.(e);
+          }}
+          accessibilityLabel={rest.accessibilityLabel ?? label}
+          accessibilityState={{ disabled: rest.editable === false }}
         />
-        {isPassword && (
-          <Pressable style={styles.eyeButton} onPress={() => setShowPassword((prev) => !prev)}>
-            {showPassword ? (
-              <EyeOff size={20} color={colors.gray[500]} />
-            ) : (
-              <Eye size={20} color={colors.gray[500]} />
-            )}
-          </Pressable>
-        )}
+        {rightAdornment ? <View style={styles.adornment}>{rightAdornment}</View> : null}
       </View>
-      {error && <Text style={styles.errorText}>{error}</Text>}
-      {helperText && !error && <Text style={styles.helperText}>{helperText}</Text>}
+
+      {error ? (
+        <Text style={styles.error} accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : hint ? (
+        <Text style={styles.hint}>{hint}</Text>
+      ) : null}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: spacing[4],
-  },
+  container: { marginBottom: spacing.lg },
   label: {
-    marginBottom: spacing[1.5],
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    color: colors.gray[700],
+    ...typography.bodySmall,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
-  inputWrapper: {
-    position: 'relative',
+  required: { color: colors.emergencyRed },
+  fieldContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: touchTargets.recommended,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+  },
+  fieldContainerFocused: {
+    borderColor: colors.nhsBlue,
+  },
+  fieldContainerError: {
+    borderColor: colors.emergencyRed,
   },
   input: {
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    fontSize: fontSize.base,
-    color: colors.gray[900],
-    minHeight: 48,
+    flex: 1,
+    ...typography.body,
+    color: colors.textPrimary,
+    paddingVertical: spacing.sm,
   },
-  paddingRight: {
-    paddingRight: 48,
-  },
-  disabled: {
-    backgroundColor: colors.gray[100],
-    opacity: 0.6,
-  },
-  multiline: {
-    minHeight: 100,
-    paddingTop: spacing[3],
-  },
-  eyeButton: {
-    position: 'absolute',
-    right: spacing[3],
-    top: 0,
-    bottom: 0,
+  adornment: {
+    paddingHorizontal: spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  errorText: {
-    marginTop: spacing[1],
-    fontSize: fontSize.sm,
-    color: colors.emergency[500],
+  error: {
+    ...typography.caption,
+    color: colors.emergencyRed,
+    marginTop: spacing.xs,
   },
-  helperText: {
-    marginTop: spacing[1],
-    fontSize: fontSize.sm,
-    color: colors.gray[500],
+  hint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
 });

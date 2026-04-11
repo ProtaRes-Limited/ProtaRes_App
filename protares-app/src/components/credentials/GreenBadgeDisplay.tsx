@@ -1,88 +1,92 @@
-import { useEffect, useState, useRef } from 'react';
-import { View, Text, Animated, StyleSheet } from 'react-native';
-import { ShieldCheck } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { TierBadge } from '@/components/ui/Badge';
-import { colors, spacing, borderRadius, fontSize, fontWeight, shadows } from '@/config/theme';
 
-interface GreenBadgeDisplayProps {
-  name: string;
-  tier: 1 | 2 | 3 | 4;
-  qrValue: string;
-  expiresAt: Date;
-}
+import { fetchGreenBadge } from '@/services/credentials';
+import { colors, radii, shadows, spacing, typography } from '@/config/theme';
+import { GREEN_BADGE_REFRESH_SECONDS } from '@/lib/constants';
+import { captureException } from '@/lib/sentry';
+import type { GreenBadge } from '@/types';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
-function formatTimeRemaining(seconds: number): string {
-  if (seconds <= 0) return 'Expired';
-  const hrs = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-  if (hrs > 0) return `${hrs}h ${mins}m ${secs}s`;
-  return `${mins}m ${secs}s`;
-}
-
-export function GreenBadgeDisplay({ name, tier, qrValue, expiresAt }: GreenBadgeDisplayProps) {
-  const [secondsRemaining, setSecondsRemaining] = useState(() =>
-    Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)),
-  );
-  const totalSeconds = useRef(
-    Math.max(1, Math.floor((expiresAt.getTime() - Date.now()) / 1000)),
-  ).current;
-  const progressAnim = useRef(new Animated.Value(secondsRemaining / totalSeconds)).current;
+/**
+ * Displays the signed Green Badge QR, regenerating it every 60 seconds.
+ * The badge can only be issued after credentials are verified. EMS teams
+ * scan the QR with their own device to confirm the responder's tier
+ * and the signature's freshness — this is the patent-pending mechanism
+ * the master doc references in §14.
+ */
+export function GreenBadgeDisplay({ holderName, tier }: { holderName: string; tier: string }) {
+  const [badge, setBadge] = useState<GreenBadge | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [ttl, setTtl] = useState(GREEN_BADGE_REFRESH_SECONDS);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setSecondsRemaining((prev) => Math.max(0, prev - 1));
+    let cancelled = false;
+
+    async function refresh() {
+      setLoading(true);
+      try {
+        const data = await fetchGreenBadge();
+        if (cancelled) return;
+        setBadge(data);
+        setTtl(GREEN_BADGE_REFRESH_SECONDS);
+      } catch (err) {
+        captureException(err, { context: 'fetchGreenBadge' });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    refresh();
+    const refreshTimer = setInterval(refresh, GREEN_BADGE_REFRESH_SECONDS * 1000);
+    const tickTimer = setInterval(() => {
+      setTtl((t) => (t > 0 ? t - 1 : 0));
     }, 1000);
 
-    Animated.timing(progressAnim, {
-      toValue: 0,
-      duration: secondsRemaining * 1000,
-      useNativeDriver: false,
-    }).start();
-
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true;
+      clearInterval(refreshTimer);
+      clearInterval(tickTimer);
+    };
   }, []);
 
-  const isExpired = secondsRemaining <= 0;
+  if (loading && !badge) {
+    return <LoadingSpinner label="Generating secure badge…" />;
+  }
+
+  if (!badge) {
+    return (
+      <View style={styles.errorBox}>
+        <Text style={styles.errorText}>
+          Green Badge is temporarily unavailable. Try again in a moment.
+        </Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.titleRow}>
-        <ShieldCheck size={28} color={isExpired ? colors.gray[400] : colors.success[600]} />
-        <Text style={styles.titleText}>{isExpired ? 'Badge Expired' : 'Verified Responder'}</Text>
+    <View style={styles.container} accessible accessibilityRole="image">
+      <View style={styles.header}>
+        <Text style={styles.label}>GREEN BADGE</Text>
+        <Text style={styles.holder}>{holderName}</Text>
+        <Text style={styles.tier}>{tier}</Text>
       </View>
 
-      <Text style={styles.name}>{name}</Text>
-
-      <View style={styles.tierWrapper}>
-        <TierBadge tier={tier} />
-      </View>
-
-      <View style={styles.qrWrapper}>
-        <QRCode value={qrValue} size={180} />
-      </View>
-
-      <Text style={styles.label}>{isExpired ? 'This badge has expired' : 'Time remaining'}</Text>
-
-      <Text style={[styles.countdown, isExpired && styles.expiredCountdown]}>
-        {formatTimeRemaining(secondsRemaining)}
-      </Text>
-
-      <View style={styles.progressBar}>
-        <Animated.View
-          style={[
-            styles.progressFill,
-            {
-              backgroundColor: isExpired ? colors.gray[400] : colors.success[500],
-              width: progressAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: ['0%', '100%'],
-              }),
-            },
-          ]}
+      <View style={styles.qrWrap}>
+        <QRCode
+          value={badge.signedPayload}
+          size={220}
+          backgroundColor={colors.white}
+          color={colors.nhsDarkBlue}
         />
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={styles.ttl}>Refreshes in {ttl}s</Text>
+        <Text style={styles.nonce}>
+          Nonce · {badge.nonce.slice(0, 8).toUpperCase()}
+        </Text>
       </View>
     </View>
   );
@@ -90,61 +94,58 @@ export function GreenBadgeDisplay({ name, tier, qrValue, expiresAt }: GreenBadge
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    borderRadius: borderRadius.xl,
     backgroundColor: colors.white,
-    padding: spacing[6],
-    ...shadows.md,
-  },
-  titleRow: {
-    flexDirection: 'row',
+    borderRadius: radii.xl,
+    padding: spacing.xl,
     alignItems: 'center',
-    gap: spacing[2],
-    marginBottom: spacing[3],
+    borderWidth: 4,
+    borderColor: colors.successGreen,
+    ...shadows.lg,
   },
-  titleText: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    color: colors.gray[900],
-  },
-  name: {
-    marginBottom: spacing[2],
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
-    color: colors.gray[800],
-  },
-  tierWrapper: {
-    marginBottom: spacing[4],
-  },
-  qrWrapper: {
-    marginBottom: spacing[4],
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.white,
-    padding: spacing[4],
-  },
+  header: { alignItems: 'center', marginBottom: spacing.lg },
   label: {
-    marginBottom: spacing[2],
-    fontSize: fontSize.sm,
-    color: colors.gray[500],
+    ...typography.caption,
+    color: colors.successGreen,
+    fontWeight: '800',
+    letterSpacing: 2,
   },
-  countdown: {
-    marginBottom: spacing[3],
-    fontSize: fontSize['2xl'],
-    fontWeight: fontWeight.bold,
-    color: colors.gray[900],
+  holder: {
+    ...typography.h2,
+    color: colors.textPrimary,
+    marginTop: spacing.sm,
+    textAlign: 'center',
   },
-  expiredCountdown: {
-    color: colors.gray[400],
+  tier: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
-  progressBar: {
-    height: 8,
-    width: '100%',
-    overflow: 'hidden',
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.gray[200],
+  qrWrap: {
+    padding: spacing.md,
+    backgroundColor: colors.white,
+    borderRadius: radii.md,
   },
-  progressFill: {
-    height: '100%',
-    borderRadius: borderRadius.full,
+  footer: {
+    marginTop: spacing.lg,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  ttl: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  nonce: {
+    ...typography.caption,
+    color: colors.grey3,
+    fontFamily: 'monospace',
+  },
+  errorBox: {
+    padding: spacing.xl,
+    alignItems: 'center',
+  },
+  errorText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 });

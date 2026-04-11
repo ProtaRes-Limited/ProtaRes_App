@@ -1,203 +1,130 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { Clock, CheckCircle, XCircle, Timer } from 'lucide-react-native';
+import React from 'react';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+import { format } from 'date-fns';
+
 import { Screen } from '@/components/layout/Screen';
+import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { Badge } from '@/components/ui/Badge';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { supabase } from '@/services/supabase';
 import { useAuthStore } from '@/stores/auth';
-import { colors, spacing, borderRadius, fontSize, fontWeight } from '@/config/theme';
+import { colors, spacing, typography } from '@/config/theme';
+
+interface HistoryEntry {
+  id: string;
+  emergency_id: string;
+  status: string;
+  accepted_at: string | null;
+  arrived_at: string | null;
+  handover_at: string | null;
+  emergencies: {
+    emergency_type: string;
+    severity: string;
+    location_address: string | null;
+    created_at: string;
+  } | null;
+}
 
 export default function HistoryScreen() {
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.session?.user?.id);
 
-  const totalResponses = user?.totalResponses ?? 0;
-  const totalAccepted = user?.totalAccepted ?? 0;
-  const totalDeclined = user?.totalDeclined ?? 0;
-  const avgTime = user?.averageResponseTimeSeconds
-    ? `${Math.round(user.averageResponseTimeSeconds / 60)}m ${
-        user.averageResponseTimeSeconds % 60
-      }s`
-    : '--';
+  const { data, isLoading } = useQuery<HistoryEntry[]>({
+    queryKey: ['history', userId],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from('responses')
+        .select(
+          'id, emergency_id, status, accepted_at, arrived_at, handover_at, emergencies(emergency_type, severity, location_address, created_at)'
+        )
+        .eq('responder_id', userId!)
+        .order('accepted_at', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (rows as unknown as HistoryEntry[]) ?? [];
+    },
+  });
 
   return (
-    <Screen scroll>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          Response History
-        </Text>
-        <Text style={styles.headerSubtitle}>
-          Your emergency response activity
-        </Text>
-      </View>
-
-      {/* Stats Summary */}
-      <View style={styles.statsRow}>
-        <Card variant="elevated" style={styles.statCard}>
-          <View style={styles.statInner}>
-            <View style={[styles.statIconCircle, styles.statIconPrimary]}>
-              <Clock size={20} color="#005EB8" />
-            </View>
-            <Text style={styles.statValue}>
-              {totalResponses}
-            </Text>
-            <Text style={styles.statLabel}>
-              Total
-            </Text>
-          </View>
-        </Card>
-
-        <Card variant="elevated" style={styles.statCard}>
-          <View style={styles.statInner}>
-            <View style={[styles.statIconCircle, styles.statIconSuccess]}>
-              <CheckCircle size={20} color="#009639" />
-            </View>
-            <Text style={[styles.statValue, styles.statValueSuccess]}>
-              {totalAccepted}
-            </Text>
-            <Text style={styles.statLabel}>
-              Accepted
-            </Text>
-          </View>
-        </Card>
-
-        <Card variant="elevated" style={styles.statCard}>
-          <View style={styles.statInner}>
-            <View style={[styles.statIconCircle, styles.statIconWarning]}>
-              <Timer size={20} color="#F59E0B" />
-            </View>
-            <Text style={styles.statValue}>
-              {avgTime}
-            </Text>
-            <Text style={styles.statLabel}>
-              Avg Time
-            </Text>
-          </View>
-        </Card>
-      </View>
-
-      {/* Declined stat */}
-      <Card variant="outlined" style={styles.declinedCard}>
-        <View style={styles.declinedRow}>
-          <View style={[styles.statIconCircle, styles.statIconEmergency]}>
-            <XCircle size={20} color="#DA291C" />
-          </View>
-          <View style={styles.declinedTextBlock}>
-            <Text style={styles.declinedTitle}>
-              Declined
-            </Text>
-            <Text style={styles.declinedSubtitle}>
-              Alerts you could not respond to
-            </Text>
-          </View>
-          <Text style={styles.declinedValue}>
-            {totalDeclined}
-          </Text>
-        </View>
-      </Card>
-
-      {/* Response List or Empty */}
-      <Text style={styles.sectionTitle}>
-        Recent Responses
-      </Text>
-
-      <EmptyState
-        icon={Clock}
-        title="No Responses Yet"
-        description="Your emergency response history will appear here once you accept and respond to alerts."
-      />
+    <Screen padded={false}>
+      <Header title="Response history" />
+      {isLoading ? (
+        <LoadingSpinner label="Loading history…" />
+      ) : (
+        <FlatList
+          data={data ?? []}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          renderItem={({ item }) => (
+            <Card elevated style={styles.entry}>
+              <View style={styles.rowBetween}>
+                <Text style={styles.title} numberOfLines={1}>
+                  {(item.emergencies?.emergency_type ?? 'Emergency').replace(/_/g, ' ')}
+                </Text>
+                <Badge
+                  label={(item.emergencies?.severity ?? 'moderate').toUpperCase()}
+                  variant={item.emergencies?.severity === 'critical' ? 'emergency' : 'info'}
+                />
+              </View>
+              {item.emergencies?.location_address ? (
+                <Text style={styles.subtitle}>{item.emergencies.location_address}</Text>
+              ) : null}
+              {item.accepted_at ? (
+                <Text style={styles.timestamp}>
+                  Accepted {format(new Date(item.accepted_at), 'PP · HH:mm')}
+                </Text>
+              ) : null}
+            </Card>
+          )}
+          ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
+          ListEmptyComponent={
+            <Card style={styles.empty}>
+              <Text style={styles.emptyTitle}>No responses yet</Text>
+              <Text style={styles.emptyBody}>
+                Your response history will appear here once you accept an
+                emergency.
+              </Text>
+            </Card>
+          }
+        />
+      )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    marginTop: spacing[4],
-    marginBottom: spacing[6],
-  },
-  headerTitle: {
-    fontSize: fontSize['2xl'],
-    fontWeight: fontWeight.bold,
-    color: colors.gray[900],
-  },
-  headerSubtitle: {
-    fontSize: fontSize.sm,
-    color: colors.gray[500],
-    marginTop: spacing[1],
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: spacing[3],
-    marginBottom: spacing[6],
-  },
-  statCard: {
-    flex: 1,
-  },
-  statInner: {
-    alignItems: 'center',
-  },
-  statIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing[2],
-  },
-  statIconPrimary: {
-    backgroundColor: colors.primary[100],
-  },
-  statIconSuccess: {
-    backgroundColor: colors.success[100],
-  },
-  statIconWarning: {
-    backgroundColor: colors.warning[100],
-  },
-  statIconEmergency: {
-    backgroundColor: colors.emergency[100],
-    marginBottom: 0,
-  },
-  statValue: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    color: colors.gray[900],
-  },
-  statValueSuccess: {
-    color: colors.success[600],
-  },
-  statLabel: {
-    fontSize: fontSize.xs,
-    color: colors.gray[500],
-    marginTop: spacing[0.5],
-  },
-  declinedCard: {
-    marginBottom: spacing[6],
-  },
-  declinedRow: {
+  list: { padding: spacing.lg, flexGrow: 1 },
+  entry: { padding: spacing.lg, gap: spacing.xs },
+  rowBetween: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[3],
+    justifyContent: 'space-between',
   },
-  declinedTextBlock: {
+  title: {
+    ...typography.body,
+    fontWeight: '700',
+    color: colors.textPrimary,
     flex: 1,
   },
-  declinedTitle: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.semibold,
-    color: colors.gray[900],
+  subtitle: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
-  declinedSubtitle: {
-    fontSize: fontSize.sm,
-    color: colors.gray[500],
+  timestamp: {
+    ...typography.caption,
+    color: colors.textSecondary,
   },
-  declinedValue: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    color: colors.gray[900],
+  empty: { padding: spacing.xl, alignItems: 'center' },
+  emptyTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
-  sectionTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.gray[900],
-    marginBottom: spacing[3],
+  emptyBody: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 });

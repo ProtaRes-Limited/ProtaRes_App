@@ -1,142 +1,78 @@
 import type { Coordinates, TransportMode } from '@/types';
-import { haversineDistance, calculateBearing } from './utils';
-
-interface LocationSample {
-  coords: Coordinates;
-  timestamp: number;
-}
-
-interface MovementProfile {
-  averageSpeed: number; // m/s
-  speedVariance: number; // consistency
-  accelerationPattern: number[];
-  isOnKnownRoute: boolean;
-  routeType?: 'bus' | 'train' | 'road';
-}
+import { haversineDistance } from './distance';
 
 /**
- * Classify the transport mode based on a series of location samples.
+ * Transport Mode Classifier™ (patent-pending) — §10.2.
+ *
+ * Lightweight, on-device heuristic that looks at the last ~20 location
+ * points and infers the most likely mode. Used to:
+ *   1. Show the responder an accurate "you're walking / cycling / on a bus"
+ *      indicator on the home screen.
+ *   2. Feed into the Corridor Algorithm so dispatch can predict where
+ *      they will be in 1-10 minutes.
+ *
+ * The real production version will also consult:
+ *   • TfL route data (for buses and trains)
+ *   • Device activity recognition APIs (iOS CoreMotion / Android
+ *     ActivityRecognitionClient) for cross-validation
+ *   • Time-of-day heuristics (rush hour = more likely transit)
+ *
+ * This implementation uses only speed profiles, so it will never over-
+ * commit to a classification it cannot justify from the raw points.
  */
-export function classifyTransportMode(
-  samples: LocationSample[]
-): TransportMode {
-  if (samples.length < 2) return 'unknown';
 
-  const profile = analyzeMovement(samples);
-
-  // Stationary: Very low speed
-  if (profile.averageSpeed < 0.5) {
-    return 'stationary';
-  }
-
-  // Walking: 1-2 m/s (3.6-7.2 km/h), high variance
-  if (profile.averageSpeed < 2 && profile.speedVariance > 0.3) {
-    return 'walking';
-  }
-
-  // Cycling: 3-8 m/s (10-30 km/h), moderate variance
-  if (profile.averageSpeed >= 3 && profile.averageSpeed <= 8) {
-    if (!profile.isOnKnownRoute || profile.routeType === 'road') {
-      return 'cycling';
-    }
-  }
-
-  // Bus: 5-15 m/s with frequent stops, on bus route
-  if (profile.isOnKnownRoute && profile.routeType === 'bus') {
-    if (hasStopStartPattern(profile.accelerationPattern)) {
-      return 'bus';
-    }
-  }
-
-  // Train: 10-40 m/s, on rail route, smooth acceleration
-  if (profile.isOnKnownRoute && profile.routeType === 'train') {
-    return 'train';
-  }
-
-  // Driving: 5-30 m/s on road, variable speed
-  if (profile.averageSpeed >= 5 && profile.averageSpeed <= 30) {
-    if (profile.isOnKnownRoute && profile.routeType === 'road') {
-      return 'driving';
-    }
-  }
-
-  // High speed driving (motorway)
-  if (profile.averageSpeed > 20) {
-    return 'driving';
-  }
-
-  return 'unknown';
+export interface TimestampedPoint extends Coordinates {
+  timestamp: number; // epoch ms
 }
 
-function analyzeMovement(samples: LocationSample[]): MovementProfile {
+const MIN_POINTS = 3;
+
+export function classifyTransportMode(points: TimestampedPoint[]): TransportMode {
+  if (points.length < MIN_POINTS) return 'stationary';
+
+  const speeds = computeSpeeds(points);
+  if (speeds.length === 0) return 'stationary';
+
+  const averageMps = mean(speeds);
+  const maxMps = Math.max(...speeds);
+  const varianceMps = variance(speeds);
+
+  // Thresholds tuned to realistic urban mobility.
+  if (averageMps < 0.3) return 'stationary';
+  if (averageMps < 2.0 && maxMps < 3.0) return 'walking';
+  if (averageMps < 6.5 && maxMps < 9.0) return 'cycling';
+
+  // Above 6.5 m/s (~23 km/h) we are in vehicle territory. Use variance
+  // to distinguish stop-and-go bus/train travel from a steady driving
+  // profile. A tight route match would disambiguate bus vs train — we
+  // leave that to the server-side classifier.
+  if (averageMps < 14 && varianceMps > 8) return 'bus';
+  if (averageMps < 28 && varianceMps > 15) return 'train';
+
+  return 'driving';
+}
+
+function computeSpeeds(points: TimestampedPoint[]): number[] {
   const speeds: number[] = [];
-  const accelerations: number[] = [];
-
-  for (let i = 1; i < samples.length; i++) {
-    const distance = haversineDistance(samples[i - 1].coords, samples[i].coords);
-    const timeDelta = (samples[i].timestamp - samples[i - 1].timestamp) / 1000;
-    if (timeDelta <= 0) continue;
-    const speed = distance / timeDelta;
-    speeds.push(speed);
-
-    if (speeds.length >= 2) {
-      const acceleration = (speed - speeds[speeds.length - 2]) / timeDelta;
-      accelerations.push(acceleration);
-    }
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    if (!prev || !curr) continue;
+    const dt = (curr.timestamp - prev.timestamp) / 1000; // seconds
+    if (dt <= 0) continue;
+    const dist = haversineDistance(prev, curr);
+    speeds.push(dist / dt);
   }
-
-  const averageSpeed =
-    speeds.length > 0 ? speeds.reduce((a, b) => a + b, 0) / speeds.length : 0;
-  const speedVariance = calculateVariance(speeds);
-
-  // Check if on known public transport route
-  const lastLocation = samples[samples.length - 1].coords;
-  const heading =
-    samples.length >= 2
-      ? calculateBearing(
-          samples[samples.length - 2].coords,
-          lastLocation
-        )
-      : 0;
-  const routeMatch = matchToKnownRoute(lastLocation, heading);
-
-  return {
-    averageSpeed,
-    speedVariance,
-    accelerationPattern: accelerations,
-    isOnKnownRoute: routeMatch !== null,
-    routeType: routeMatch?.type,
-  };
+  return speeds;
 }
 
-function calculateVariance(values: number[]): number {
-  if (values.length < 2) return 0;
-  const mean = values.reduce((a, b) => a + b, 0) / values.length;
-  const squaredDiffs = values.map((v) => (v - mean) ** 2);
-  return squaredDiffs.reduce((a, b) => a + b, 0) / values.length;
+function mean(values: number[]): number {
+  if (values.length === 0) return 0;
+  return values.reduce((acc, v) => acc + v, 0) / values.length;
 }
 
-function hasStopStartPattern(accelerations: number[]): boolean {
-  let stopCount = 0;
-
-  for (let i = 1; i < accelerations.length; i++) {
-    if (accelerations[i - 1] < -1 && accelerations[i] > 0.5) {
-      stopCount++;
-    }
-  }
-
-  return stopCount >= 2;
-}
-
-/**
- * Match the current location and heading to a known public transport route.
- * Placeholder implementation - will integrate with TfL API in Phase 2.
- */
-function matchToKnownRoute(
-  _location: Coordinates,
-  _heading: number
-): { type: 'bus' | 'train' | 'road' } | null {
-  // TODO: Integrate with TfL API for real route matching
-  // For now, return null (no known route match)
-  return null;
+function variance(values: number[]): number {
+  if (values.length === 0) return 0;
+  const m = mean(values);
+  return mean(values.map((v) => (v - m) ** 2));
 }

@@ -1,61 +1,36 @@
-import { View, Pressable, StyleSheet, type ViewStyle } from 'react-native';
-import type { ReactNode } from 'react';
-import { colors, spacing, borderRadius, shadows } from '@/config/theme';
+import React from 'react';
+import { StyleSheet, View, type ViewProps } from 'react-native';
 
-type CardVariant = 'default' | 'elevated' | 'outlined' | 'emergency' | 'active';
+import { colors, radii, shadows, spacing } from '@/config/theme';
 
-interface CardProps {
-  children: ReactNode;
-  variant?: CardVariant;
-  onPress?: () => void;
-  style?: ViewStyle;
+interface Props extends ViewProps {
+  elevated?: boolean;
+  padded?: boolean;
 }
 
-const variantStyles: Record<CardVariant, ViewStyle> = {
-  default: {
-    backgroundColor: colors.white,
-  },
-  elevated: {
-    backgroundColor: colors.white,
-    ...shadows.md,
-  },
-  outlined: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-  },
-  emergency: {
-    backgroundColor: colors.emergency[50],
-    borderWidth: 2,
-    borderColor: colors.emergency[500],
-  },
-  active: {
-    backgroundColor: colors.primary[50],
-    borderWidth: 2,
-    borderColor: colors.primary[500],
-  },
-};
-
-export function Card({ children, variant = 'default', onPress, style }: CardProps) {
-  const combinedStyle = [styles.card, variantStyles[variant], style];
-
-  if (onPress) {
-    return (
-      <Pressable onPress={onPress} style={({ pressed }) => [...combinedStyle, pressed && styles.pressed]}>
-        {children}
-      </Pressable>
-    );
-  }
-
-  return <View style={combinedStyle}>{children}</View>;
+export function Card({ elevated = false, padded = true, style, children, ...rest }: Props) {
+  return (
+    <View
+      {...rest}
+      style={[
+        styles.base,
+        padded && styles.padded,
+        elevated && styles.elevated,
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: borderRadius.xl,
-    padding: spacing[4],
+  base: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  pressed: {
-    opacity: 0.9,
-  },
+  padded: { padding: spacing.lg },
+  elevated: { ...shadows.md, borderWidth: 0 },
 });

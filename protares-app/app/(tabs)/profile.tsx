@@ -1,240 +1,167 @@
-import { View, Text, Pressable, Alert, StyleSheet } from 'react-native';
+import React from 'react';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import {
-  CreditCard,
-  ShieldCheck,
-  Bell,
-  Lock,
-  Settings,
-  Download,
-  LogOut,
-  ChevronRight,
-} from 'lucide-react-native';
-import type { LucideIcon } from 'lucide-react-native';
+import { LogOut, Settings, ShieldCheck, FileText, Lock } from 'lucide-react-native';
+
 import { Screen } from '@/components/layout/Screen';
+import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
-import { Avatar } from '@/components/ui/Avatar';
-import { TierBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/auth';
-import { TIER_LABELS } from '@/lib/constants';
-import { colors, spacing, borderRadius, fontSize, fontWeight } from '@/config/theme';
-
-interface MenuItemProps {
-  icon: LucideIcon;
-  label: string;
-  description: string;
-  onPress: () => void;
-  danger?: boolean;
-}
-
-function MenuItem({ icon: Icon, label, description, onPress, danger }: MenuItemProps) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.menuItem,
-        pressed && { backgroundColor: colors.gray[50] },
-      ]}
-    >
-      <View
-        style={[
-          styles.menuIconCircle,
-          danger ? styles.menuIconDanger : styles.menuIconDefault,
-        ]}
-      >
-        <Icon size={20} color={danger ? '#DA291C' : '#005EB8'} />
-      </View>
-      <View style={styles.menuTextBlock}>
-        <Text
-          style={[
-            styles.menuLabel,
-            danger ? styles.menuLabelDanger : styles.menuLabelDefault,
-          ]}
-        >
-          {label}
-        </Text>
-        <Text style={styles.menuDescription}>{description}</Text>
-      </View>
-      <ChevronRight size={18} color="#9CA3AF" />
-    </Pressable>
-  );
-}
+import { signOut } from '@/services/auth';
+import { mapError } from '@/lib/error-messages';
+import { captureException } from '@/lib/sentry';
+import { colors, radii, spacing, typography } from '@/config/theme';
 
 export default function ProfileScreen() {
-  const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
+  const router = useRouter();
 
-  const tierNumber = user?.tier === 'tier1_active_healthcare'
-    ? 1
-    : user?.tier === 'tier2_retired_healthcare'
-    ? 2
-    : user?.tier === 'tier3_first_aid'
-    ? 3
-    : 4;
+  if (!user) return null;
 
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: () => {
-            logout();
-            router.replace('/(auth)/login');
-          },
+  const handleSignOut = async () => {
+    Alert.alert('Sign out?', 'You will no longer receive emergency alerts.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await signOut();
+          } catch (err) {
+            const mapped = mapError(err);
+            captureException(err, { context: 'profile.signOut' });
+            Alert.alert(mapped.title, mapped.message);
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
+  const menuItems: Array<{
+    icon: React.ComponentType<{ size: number; color: string }>;
+    title: string;
+    subtitle: string;
+    href: string;
+  }> = [
+    {
+      icon: ShieldCheck,
+      title: 'Credentials',
+      subtitle: 'Verify GMC, NMC or HCPC',
+      href: '/credentials',
+    },
+    {
+      icon: Settings,
+      title: 'Settings',
+      subtitle: 'Notifications, radius, SMS fallback',
+      href: '/settings',
+    },
+    {
+      icon: Lock,
+      title: 'Privacy & data',
+      subtitle: 'Consent, data export, deletion',
+      href: '/settings/privacy',
+    },
+    {
+      icon: FileText,
+      title: 'Response history',
+      subtitle: 'View your past responses',
+      href: '/(tabs)/history',
+    },
+  ];
+
   return (
-    <Screen scroll>
-      {/* Profile Header */}
-      <View style={styles.profileHeader}>
-        <Avatar
-          name={user?.fullName}
-          source={user?.profilePhotoUrl ?? undefined}
-          size="xl"
-          online={user?.availability === 'available'}
-        />
-        <Text style={styles.profileName}>
-          {user?.fullName || 'Responder'}
-        </Text>
-        <Text style={styles.profileEmail}>
-          {user?.email}
-        </Text>
-        <View style={styles.tierBadgeWrapper}>
-          <TierBadge tier={tierNumber as 1 | 2 | 3 | 4} />
+    <Screen scrollable padded={false}>
+      <Header title="Profile" />
+      <View style={styles.body}>
+        <Card elevated style={styles.identityCard}>
+          <View style={styles.avatarWrap}>
+            <Text style={styles.avatarInitials}>
+              {user.firstName[0] ?? ''}
+              {user.lastName[0] ?? ''}
+            </Text>
+          </View>
+          <View style={styles.identityText}>
+            <Text style={styles.identityName}>{user.fullName || user.firstName}</Text>
+            <Text style={styles.identityEmail}>{user.email}</Text>
+          </View>
+        </Card>
+
+        <View style={styles.menu}>
+          {menuItems.map(({ icon: Icon, title, subtitle, href }) => (
+            <Card
+              key={title}
+              style={styles.menuItem}
+              onTouchEnd={() => router.push(href as never)}
+            >
+              <Icon size={22} color={colors.nhsBlue} />
+              <View style={styles.menuItemBody}>
+                <Text style={styles.menuItemTitle}>{title}</Text>
+                <Text style={styles.menuItemSubtitle}>{subtitle}</Text>
+              </View>
+            </Card>
+          ))}
         </View>
-      </View>
 
-      {/* Menu Items */}
-      <Card variant="outlined" style={styles.menuCard}>
-        <MenuItem
-          icon={CreditCard}
-          label="Green Badge"
-          description="Display your verified responder badge"
-          onPress={() => router.push('/credentials/green-badge')}
-        />
-        <MenuItem
-          icon={ShieldCheck}
-          label="Verify Credentials"
-          description="Verify your professional qualifications"
-          onPress={() => router.push('/credentials')}
-        />
-        <MenuItem
-          icon={Bell}
-          label="Notifications"
-          description="Manage alert and notification settings"
-          onPress={() => router.push('/settings')}
-        />
-        <MenuItem
-          icon={Lock}
-          label="Privacy"
-          description="Location tracking and data preferences"
-          onPress={() => router.push('/settings/privacy')}
-        />
-        <MenuItem
-          icon={Settings}
-          label="Settings"
-          description="App preferences and configuration"
-          onPress={() => router.push('/settings')}
-        />
-        <MenuItem
-          icon={Download}
-          label="Download Data"
-          description="Export your response history and data"
-          onPress={() =>
-            Alert.alert(
-              'Download Data',
-              'Your data export will be prepared and emailed to you.'
-            )
-          }
-        />
-      </Card>
-
-      {/* Sign Out */}
-      <View style={styles.signOutWrapper}>
         <Button
-          variant="ghost"
-          fullWidth
-          icon={LogOut}
+          label="Sign out"
+          variant="outline"
           onPress={handleSignOut}
-        >
-          Sign Out
-        </Button>
+          leftIcon={<LogOut size={18} color={colors.nhsBlue} />}
+          fullWidth
+        />
       </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  menuItem: {
+  body: { padding: spacing.lg, gap: spacing.md },
+  identityCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[3],
-    paddingVertical: spacing[4],
-    borderBottomWidth: 1,
-    borderColor: colors.gray[100],
+    gap: spacing.lg,
+    padding: spacing.lg,
   },
-  menuIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.full,
+  avatarWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.nhsBlue,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  menuIconDanger: {
-    backgroundColor: colors.emergency[100],
+  avatarInitials: {
+    ...typography.h2,
+    color: colors.white,
   },
-  menuIconDefault: {
-    backgroundColor: colors.gray[100],
+  identityText: { flex: 1 },
+  identityName: {
+    ...typography.h3,
+    color: colors.textPrimary,
   },
-  menuTextBlock: {
-    flex: 1,
+  identityEmail: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
-  menuLabel: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.medium,
-  },
-  menuLabelDanger: {
-    color: colors.emergency[600],
-  },
-  menuLabelDefault: {
-    color: colors.gray[900],
-  },
-  menuDescription: {
-    fontSize: fontSize.sm,
-    color: colors.gray[500],
-  },
-  profileHeader: {
+  menu: { gap: spacing.sm },
+  menuItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing[6],
-    marginBottom: spacing[6],
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radii.md,
   },
-  profileName: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    color: colors.gray[900],
-    marginTop: spacing[3],
+  menuItemBody: { flex: 1 },
+  menuItemTitle: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
-  profileEmail: {
-    fontSize: fontSize.sm,
-    color: colors.gray[500],
-    marginTop: spacing[0.5],
-  },
-  tierBadgeWrapper: {
-    marginTop: spacing[3],
-  },
-  menuCard: {
-    marginBottom: spacing[4],
-  },
-  signOutWrapper: {
-    marginBottom: spacing[8],
+  menuItemSubtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
 });

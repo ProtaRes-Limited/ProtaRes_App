@@ -1,66 +1,45 @@
 import { create } from 'zustand';
-import type { Emergency, EmergencyResponse, ResponseStatus } from '@/types';
+
+import type { Emergency } from '@/types';
 
 interface EmergencyState {
-  // Active emergency response
-  activeEmergency: Emergency | null;
-  activeResponse: EmergencyResponse | null;
-
-  // Incoming alerts
   pendingAlerts: Emergency[];
+  activeEmergency: Emergency | null;
 
-  // State
-  isResponding: boolean;
-  responseStatus: ResponseStatus | null;
-
-  // Actions
+  addPendingAlert: (alert: Emergency) => void;
+  removePendingAlert: (id: string) => void;
   setActiveEmergency: (emergency: Emergency | null) => void;
-  setActiveResponse: (response: EmergencyResponse | null) => void;
-  addPendingAlert: (emergency: Emergency) => void;
-  removePendingAlert: (emergencyId: string) => void;
-  clearPendingAlerts: () => void;
-  setResponseStatus: (status: ResponseStatus | null) => void;
-  clearActiveResponse: () => void;
+  updateEmergency: (updates: Partial<Emergency> & { id: string }) => void;
+  clear: () => void;
 }
 
 export const useEmergencyStore = create<EmergencyState>((set) => ({
-  activeEmergency: null,
-  activeResponse: null,
   pendingAlerts: [],
-  isResponding: false,
-  responseStatus: null,
+  activeEmergency: null,
 
-  setActiveEmergency: (emergency) =>
-    set({
-      activeEmergency: emergency,
-      isResponding: !!emergency,
+  addPendingAlert: (alert) =>
+    set((state) => {
+      if (state.pendingAlerts.some((a) => a.id === alert.id)) return state;
+      return { pendingAlerts: [alert, ...state.pendingAlerts].slice(0, 10) };
     }),
 
-  setActiveResponse: (response) =>
-    set({
-      activeResponse: response,
-      responseStatus: response?.status || null,
-    }),
-
-  addPendingAlert: (emergency) =>
+  removePendingAlert: (id) =>
     set((state) => ({
-      pendingAlerts: [...state.pendingAlerts, emergency],
+      pendingAlerts: state.pendingAlerts.filter((a) => a.id !== id),
     })),
 
-  removePendingAlert: (emergencyId) =>
+  setActiveEmergency: (emergency) => set({ activeEmergency: emergency }),
+
+  updateEmergency: (updates) =>
     set((state) => ({
-      pendingAlerts: state.pendingAlerts.filter((e) => e.id !== emergencyId),
+      activeEmergency:
+        state.activeEmergency?.id === updates.id
+          ? { ...state.activeEmergency, ...updates }
+          : state.activeEmergency,
+      pendingAlerts: state.pendingAlerts.map((a) =>
+        a.id === updates.id ? { ...a, ...updates } : a
+      ),
     })),
 
-  clearPendingAlerts: () => set({ pendingAlerts: [] }),
-
-  setResponseStatus: (status) => set({ responseStatus: status }),
-
-  clearActiveResponse: () =>
-    set({
-      activeEmergency: null,
-      activeResponse: null,
-      isResponding: false,
-      responseStatus: null,
-    }),
+  clear: () => set({ pendingAlerts: [], activeEmergency: null }),
 }));
