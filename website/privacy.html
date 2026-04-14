@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — ProtaRes</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color: #212B32; background: #F0F4F5; }
+    .header { background: #005EB8; padding: 32px 20px; text-align: center; }
+    .header h1 { color: #FFFFFF; font-size: 2rem; }
+    .header p { color: #E6F0F7; margin-top: 4px; }
+    .container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+    .back { display: inline-block; margin-bottom: 24px; color: #005EB8; text-decoration: none; font-weight: 600; }
+    .back:hover { text-decoration: underline; }
+    .meta { color: #768692; font-size: 0.9rem; margin-bottom: 32px; }
+    h2 { color: #005EB8; margin: 32px 0 12px 0; font-size: 1.3rem; }
+    h3 { color: #003087; margin: 24px 0 8px 0; font-size: 1.1rem; }
+    p { line-height: 1.8; margin-bottom: 12px; color: #4C6272; }
+    ul { margin: 8px 0 16px 24px; color: #4C6272; line-height: 1.8; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    th, td { border: 1px solid #D8DDE0; padding: 10px 12px; text-align: left; font-size: 0.9rem; }
+    th { background: #005EB8; color: #FFFFFF; }
+    td { color: #4C6272; }
+    .footer { text-align: center; padding: 40px 20px; color: #768692; font-size: 0.85rem; }
+    .footer a { color: #005EB8; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Privacy Policy</h1>
+    <p>ProtaRes — Intelligent Emergency Response Coordination Platform</p>
+  </div>
+
+  <div class="container">
+    <a class="back" href="index.html">&larr; Back to Home</a>
+    <p class="meta">Last updated: April 2026 &middot; Version 1.0</p>
+
+    <h2>1. Who We Are</h2>
+    <p>ProtaRes Ltd ("we", "us", "our") is the data controller for personal data processed through the ProtaRes mobile application. We are registered with the Information Commissioner's Office (ICO).</p>
+    <p><strong>Data Protection Officer:</strong> Chisom Ezeani<br>
+    <strong>Contact:</strong> chisom@protares.co.uk<br>
+    <strong>Address:</strong> ProtaRes Ltd, United Kingdom</p>
+
+    <h2>2. What Data We Collect</h2>
+
+    <h3>2.1 Account Data</h3>
+    <p>When you register, we collect your name, email address, and optionally your phone number. If you sign in with Google, we receive your name and email from your Google account.</p>
+
+    <h3>2.2 Professional Credentials</h3>
+    <p>If you are a healthcare professional, we collect your credential type (GMC, NMC, HCPC, or first aid certificate), credential number, and expiry date. Credential numbers are encrypted before storage and verified against official professional registers.</p>
+
+    <h3>2.3 Location Data</h3>
+    <p>When you set your status to "on duty", we track your location to match you with nearby emergencies. Location data is retained for a maximum of 24 hours and then automatically deleted. We do not track your location when you are "off duty".</p>
+
+    <h3>2.4 Emergency Response Data</h3>
+    <p>When you respond to an emergency, we record your response status, arrival time, interventions performed, and handover details. This data is retained for clinical governance and quality assurance purposes.</p>
+
+    <h3>2.5 Video and Audio (Witness Mode)</h3>
+    <p>If you use Witness Mode, video and audio from the emergency scene may be transmitted to dispatchers and responding personnel. This data is processed for the purpose of emergency coordination and clinical assessment.</p>
+
+    <h3>2.6 Device Information</h3>
+    <p>We collect your device type, operating system, and push notification token to deliver emergency alerts.</p>
+
+    <h2>3. Lawful Basis for Processing</h2>
+
+    <table>
+      <tr><th>Data Category</th><th>Lawful Basis</th><th>Justification</th></tr>
+      <tr><td>Account data</td><td>Contract</td><td>Necessary to provide the service</td></tr>
+      <tr><td>Professional credentials</td><td>Consent + Legitimate Interest</td><td>Verify qualifications for patient safety</td></tr>
+      <tr><td>Location (on duty)</td><td>Explicit Consent</td><td>You choose to go on duty; opt-in required</td></tr>
+      <tr><td>Emergency response data</td><td>Legitimate Interest</td><td>Clinical governance and service improvement</td></tr>
+      <tr><td>Witness Mode media</td><td>Legitimate Interest + Vital Interest</td><td>Emergency coordination, potential life-saving</td></tr>
+      <tr><td>Push notification tokens</td><td>Contract</td><td>Necessary for emergency alert delivery</td></tr>
+    </table>
+
+    <h2>4. How We Use Your Data</h2>
+    <ul>
+      <li>To match you with nearby emergencies based on your location, qualifications, and predicted trajectory</li>
+      <li>To verify your professional credentials against GMC, NMC, or HCPC registers</li>
+      <li>To send you emergency alerts via push notifications or SMS</li>
+      <li>To coordinate emergency response between responders and emergency services</li>
+      <li>To generate your Green Badge for on-scene credential verification</li>
+      <li>To produce anonymised statistics for service improvement</li>
+      <li>To comply with clinical governance and audit requirements</li>
+    </ul>
+
+    <h2>5. Data Sharing</h2>
+    <p>We share your data only in the following circumstances:</p>
+    <ul>
+      <li><strong>Emergency services:</strong> When you respond to an emergency, your name, credential tier, and ETA are shared with dispatchers and emergency services on scene.</li>
+      <li><strong>Service providers:</strong> We use Supabase (database and authentication), Google Cloud (maps and authentication), and Twilio (SMS alerts). These providers process data on our behalf under data processing agreements.</li>
+      <li><strong>Legal obligations:</strong> If required by law, court order, or regulatory authority.</li>
+    </ul>
+    <p>We never sell your personal data to third parties. We never share your location data with other responders — only dispatchers can see responder locations during active emergencies.</p>
+
+    <h2>6. Data Retention</h2>
+
+    <table>
+      <tr><th>Data Type</th><th>Retention Period</th></tr>
+      <tr><td>Location history</td><td>24 hours (automatically deleted)</td></tr>
+      <tr><td>Push notification tokens</td><td>Until you uninstall or 90 days inactive</td></tr>
+      <tr><td>Emergency response records</td><td>7 years (clinical governance requirement)</td></tr>
+      <tr><td>Account data</td><td>Until you delete your account</td></tr>
+      <tr><td>Credential verification records</td><td>Until credential expires + 1 year</td></tr>
+      <tr><td>Audit logs</td><td>7 years (anonymised after account deletion)</td></tr>
+      <tr><td>Consent records</td><td>7 years (legal requirement)</td></tr>
+      <tr><td>Witness Mode media</td><td>90 days (unless required for investigation)</td></tr>
+    </table>
+
+    <h2>7. Your Rights Under UK GDPR</h2>
+    <p>You have the following rights:</p>
+    <ul>
+      <li><strong>Right of access:</strong> Request a copy of all personal data we hold about you. Use the "Download My Data" feature in the app, or email us.</li>
+      <li><strong>Right to rectification:</strong> Update your profile information at any time in the app.</li>
+      <li><strong>Right to erasure:</strong> Delete your account via Settings &gt; Privacy &gt; Delete Account. We will erase your personal data within 30 days. Emergency response records will be anonymised (not deleted) for clinical governance.</li>
+      <li><strong>Right to restrict processing:</strong> You can go "off duty" at any time to stop location tracking. You can disable push notifications in your device settings.</li>
+      <li><strong>Right to data portability:</strong> Use the "Download My Data" feature to receive your data in a machine-readable format (JSON).</li>
+      <li><strong>Right to object:</strong> Contact us to object to any processing based on legitimate interest.</li>
+      <li><strong>Right to withdraw consent:</strong> Withdraw location consent at any time by going off duty or revoking location permission in your device settings.</li>
+    </ul>
+    <p>To exercise any of these rights, email <strong>chisom@protares.co.uk</strong> or use the in-app privacy settings. We will respond within 30 days.</p>
+
+    <h2>8. Data Security</h2>
+    <p>We implement the following security measures:</p>
+    <ul>
+      <li>All data transmitted between the app and our servers is encrypted using TLS 1.2 or higher.</li>
+      <li>Credential numbers are encrypted at rest using AES-256-GCM.</li>
+      <li>Authentication tokens are stored in secure device storage (Keychain on iOS, Keystore on Android).</li>
+      <li>Row Level Security ensures users can only access their own data.</li>
+      <li>Green Badge QR codes regenerate every 60 seconds and cannot be reused.</li>
+      <li>We conduct regular security assessments and penetration testing.</li>
+      <li>Access to personal data is restricted to authorised personnel on a need-to-know basis.</li>
+    </ul>
+
+    <h2>9. Children</h2>
+    <p>ProtaRes is not intended for use by anyone under the age of 18. We do not knowingly collect personal data from children. If we become aware that we have collected data from a child, we will delete it immediately.</p>
+
+    <h2>10. International Transfers</h2>
+    <p>Your data is primarily stored in the United Kingdom and European Economic Area. Some service providers (Google, Supabase) may process data in the United States under Standard Contractual Clauses or equivalent safeguards approved by the UK Information Commissioner.</p>
+
+    <h2>11. Changes to This Policy</h2>
+    <p>We may update this privacy policy from time to time. We will notify you of significant changes via push notification or email. The "Last updated" date at the top of this page indicates the most recent revision. Continued use of the app after changes constitutes acceptance of the updated policy.</p>
+
+    <h2>12. Complaints</h2>
+    <p>If you are unhappy with how we handle your data, you have the right to lodge a complaint with the Information Commissioner's Office (ICO):</p>
+    <p><strong>Website:</strong> <a href="https://ico.org.uk" style="color: #005EB8;">ico.org.uk</a><br>
+    <strong>Phone:</strong> 0303 123 1113</p>
+
+    <h2>13. Contact Us</h2>
+    <p><strong>ProtaRes Ltd</strong><br>
+    Data Protection Officer: Chisom Ezeani<br>
+    Email: chisom@protares.co.uk</p>
+  </div>
+
+  <div class="footer">
+    <p>&copy; 2026 ProtaRes Ltd. All rights reserved.</p>
+    <p><a href="index.html">Home</a> &middot; <a href="terms.html">Terms of Service</a></p>
+  </div>
+
+</body>
+</html>

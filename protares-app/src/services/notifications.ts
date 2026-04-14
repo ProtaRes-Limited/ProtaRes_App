@@ -34,7 +34,7 @@ export async function ensurePermissionsAndRegister(): Promise<string | null> {
     await Notifications.setNotificationChannelAsync('emergency', {
       name: 'Emergency alerts',
       importance: Notifications.AndroidImportance.MAX,
-      sound: 'emergency_alert.wav',
+      sound: 'default',
       vibrationPattern: [0, 500, 200, 500],
       bypassDnd: true,
       lightColor: '#DA291C',

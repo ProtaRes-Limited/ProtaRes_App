@@ -32,19 +32,22 @@ import { useAuth } from '@/hooks/useAuth';
 import { colors } from '@/config/theme';
 
 // Run these once, module-scope, before any component mounts.
-SplashScreen.preventAutoHideAsync().catch(() => {
-  /* no-op — preventAutoHideAsync is best-effort */
-});
+SplashScreen.preventAutoHideAsync().catch(() => {});
 initSentry();
-GoogleSignin.configure({
-  webClientId: env.google.webClientId,
-  iosClientId: env.google.iosClientId,
-  offlineAccess: true,
-  scopes: [
-    'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/userinfo.profile',
-  ],
-});
+
+// Only configure Google Sign-In if webClientId is available.
+// Without it, offlineAccess: true throws a fatal error that kills the app.
+if (env.google.webClientId) {
+  GoogleSignin.configure({
+    webClientId: env.google.webClientId,
+    iosClientId: env.google.iosClientId || undefined,
+    offlineAccess: true,
+    scopes: [
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+    ],
+  });
+}
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { session, initialised, loading } = useAuth();
@@ -54,9 +57,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!initialised) return;
 
-    SplashScreen.hideAsync().catch(() => {
-      /* ignore */
-    });
+    SplashScreen.hideAsync().catch(() => {});
 
     const inAuthGroup = segments[0] === '(auth)';
 

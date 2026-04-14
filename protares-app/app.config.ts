@@ -112,14 +112,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           recordAudioAndroid: true,
         },
       ],
-      [
-        'expo-notifications',
-        {
-          icon: './assets/notification-icon.png',
-          color: '#005EB8',
-          sounds: ['./assets/sounds/emergency_alert.wav'],
-        },
-      ],
+      'expo-notifications',
       [
         'expo-local-authentication',
         {

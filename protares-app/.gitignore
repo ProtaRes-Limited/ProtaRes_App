@@ -1,5 +1,8 @@
 # Dependencies
 node_modules/
+
+# Sentry auth token
+android/sentry.properties
 .pnp/
 .pnp.js
 
@@ -44,3 +47,10 @@ coverage/
 # EAS
 credentials.json
 secrets/
+
+# Firebase
+google-services.json
+GoogleService-Info.plist
+
+# Supabase temp
+supabase/.temp/
