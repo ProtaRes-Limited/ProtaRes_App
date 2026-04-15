@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Minus, Plus } from 'lucide-react-native';
 
@@ -8,6 +8,8 @@ import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { useAuthStore } from '@/stores/auth';
 import { useUpdateProfile } from '@/hooks/useProfile';
+import { requestLocationPermission } from '@/services/location';
+import { supabase } from '@/services/supabase';
 import { colors, radii, spacing, touchTargets, typography } from '@/config/theme';
 
 const MIN_RADIUS_KM = 0.5;
@@ -16,10 +18,56 @@ const RADIUS_STEP_KM = 0.5;
 
 export default function SettingsScreen() {
   const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
   const updateProfile = useUpdateProfile();
   const router = useRouter();
+  const [locationLoading, setLocationLoading] = useState(false);
 
   if (!user) return null;
+
+  const handleToggleLocation = async (value: boolean) => {
+    if (value) {
+      setLocationLoading(true);
+      try {
+        const result = await requestLocationPermission();
+        if (result !== 'granted') {
+          Alert.alert(
+            'Permission required',
+            'Location permission was denied. Please enable it in your device Settings to share your location with ProtaRes.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+        const now = new Date().toISOString();
+        await supabase
+          .from('responders')
+          .update({ location_consent: true, location_consent_at: now })
+          .eq('id', user.id);
+        setUser({ ...user, locationConsent: true, locationConsentAt: now });
+      } finally {
+        setLocationLoading(false);
+      }
+    } else {
+      Alert.alert(
+        'Disable location sharing?',
+        'You will stop receiving nearby emergency alerts while location is off.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Disable',
+            style: 'destructive',
+            onPress: async () => {
+              await supabase
+                .from('responders')
+                .update({ location_consent: false })
+                .eq('id', user.id);
+              setUser({ ...user, locationConsent: false });
+            },
+          },
+        ]
+      );
+    }
+  };
 
   const clampRadius = (value: number) =>
     Math.min(MAX_RADIUS_KM, Math.max(MIN_RADIUS_KM, Math.round(value * 2) / 2));
@@ -72,6 +120,26 @@ export default function SettingsScreen() {
             >
               <Plus size={20} color={colors.nhsBlue} />
             </TouchableOpacity>
+          </View>
+        </Card>
+
+        <Card elevated style={styles.card}>
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleText}>
+              <Text style={styles.sectionTitle}>Location sharing</Text>
+              <Text style={styles.sectionBody}>
+                Share your location so ProtaRes can alert you to emergencies
+                nearby. Required to show as available.
+              </Text>
+            </View>
+            <Switch
+              value={user.locationConsent}
+              onValueChange={handleToggleLocation}
+              disabled={locationLoading}
+              trackColor={{ true: colors.nhsBlue, false: colors.grey2 }}
+              thumbColor={colors.white}
+              accessibilityLabel="Toggle location sharing"
+            />
           </View>
         </Card>
 

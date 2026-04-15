@@ -91,22 +91,31 @@ export default function HomeScreen() {
           </Card>
         </TouchableOpacity>
 
-        {/* Location status */}
-        <Card elevated style={styles.credentialsCard}>
-          <View style={styles.cardIcon}>
-            <MapPin size={24} color={colors.nhsBlue} />
-          </View>
-          <View style={styles.cardBody}>
-            <Text style={styles.cardTitle}>Location</Text>
-            <Text style={styles.cardSubtitle}>
-              {locationState.current
-                ? `Tracking: ${locationState.current.latitude.toFixed(3)}, ${locationState.current.longitude.toFixed(3)}`
-                : user.locationConsent
-                  ? 'Waiting for location lock…'
-                  : 'Location sharing is off. Enable from Settings to go available.'}
-            </Text>
-          </View>
-        </Card>
+        {/* Location status — taps to map (active) or settings (no consent) */}
+        <TouchableOpacity
+          onPress={() =>
+            user.locationConsent
+              ? router.push('/(tabs)/map')
+              : router.push('/settings')
+          }
+          activeOpacity={0.85}
+        >
+          <Card elevated style={styles.credentialsCard}>
+            <View style={styles.cardIcon}>
+              <MapPin size={24} color={colors.nhsBlue} />
+            </View>
+            <View style={styles.cardBody}>
+              <Text style={styles.cardTitle}>Location</Text>
+              <Text style={styles.cardSubtitle}>
+                {locationState.current
+                  ? `Tracking active — tap to view map`
+                  : user.locationConsent
+                    ? 'Waiting for location lock…'
+                    : 'Location sharing is off. Tap to enable in Settings.'}
+              </Text>
+            </View>
+          </Card>
+        </TouchableOpacity>
 
         {/* Stats */}
         <Card elevated style={styles.statsCard}>
