@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LogOut, Settings, ShieldCheck, FileText, Lock } from 'lucide-react-native';
+import { LogOut, Settings, ShieldCheck, FileText, Lock, LayoutDashboard } from 'lucide-react-native';
 
 import { Screen } from '@/components/layout/Screen';
 import { Header } from '@/components/layout/Header';
@@ -69,6 +69,15 @@ export default function ProfileScreen() {
       href: '/(tabs)/history',
     },
   ];
+
+  if (user.isAdmin) {
+    menuItems.push({
+      icon: LayoutDashboard,
+      title: 'Admin panel',
+      subtitle: 'Manage responders, emergencies & data',
+      href: '/(admin)',
+    });
+  }
 
   return (
     <Screen scrollable padded={false}>

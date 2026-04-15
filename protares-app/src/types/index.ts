@@ -74,6 +74,7 @@ export interface Responder {
   averageResponseTimeSeconds: number | null;
   locationConsent: boolean;
   locationConsentAt: string | null;
+  isAdmin: boolean;
   dataProcessingConsent: boolean;
   dataProcessingConsentAt: string | null;
   marketingConsent: boolean;

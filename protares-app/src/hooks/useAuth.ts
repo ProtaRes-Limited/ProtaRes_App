@@ -117,6 +117,7 @@ async function loadResponderProfile() {
     averageResponseTimeSeconds: (row.average_response_time_seconds as number | null) ?? null,
     locationConsent: Boolean(row.location_consent),
     locationConsentAt: (row.location_consent_at as string | null) ?? null,
+    isAdmin: row.user_role === 'admin',
     dataProcessingConsent: Boolean(row.data_processing_consent),
     dataProcessingConsentAt: (row.data_processing_consent_at as string | null) ?? null,
     marketingConsent: Boolean(row.marketing_consent),
