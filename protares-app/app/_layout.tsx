@@ -12,6 +12,9 @@
  */
 
 import 'react-native-gesture-handler';
+// Register background location task before any navigation renders.
+// TaskManager.defineTask must be called synchronously at module load time.
+import '@/tasks/background-location';
 
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';

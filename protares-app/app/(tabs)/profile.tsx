@@ -15,7 +15,34 @@ import { colors, radii, spacing, typography } from '@/config/theme';
 
 export default function ProfileScreen() {
   const user = useAuthStore((s) => s.user);
+  const session = useAuthStore((s) => s.session);
   const router = useRouter();
+
+  // Session exists but profile didn't load — show emergency sign-out so user isn't trapped
+  if (!user && session) {
+    return (
+      <Screen scrollable padded={false}>
+        <Header title="Profile" />
+        <View style={styles.body}>
+          <Button
+            label="Sign out"
+            variant="outline"
+            onPress={async () => {
+              try {
+                await signOut();
+              } catch (err) {
+                const mapped = mapError(err);
+                captureException(err, { context: 'profile.signOut.fallback' });
+                Alert.alert(mapped.title, mapped.message);
+              }
+            }}
+            leftIcon={<LogOut size={18} color={colors.nhsBlue} />}
+            fullWidth
+          />
+        </View>
+      </Screen>
+    );
+  }
 
   if (!user) return null;
 

@@ -9,7 +9,6 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { useAuthStore } from '@/stores/auth';
 import { useLocationStore } from '@/stores/location';
-import { useLocation } from '@/hooks/useLocation';
 import { useSetAvailability } from '@/hooks/useProfile';
 import { colors, radii, spacing, typography } from '@/config/theme';
 
@@ -25,7 +24,6 @@ export default function HomeScreen() {
   const locationState = useLocationStore();
   const setAvailabilityMutation = useSetAvailability();
   const router = useRouter();
-  useLocation();
 
   if (!user) return null;
 

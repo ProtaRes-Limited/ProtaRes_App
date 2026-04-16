@@ -3,10 +3,13 @@ import { Tabs } from 'expo-router';
 import { Home, Bell, Map, Clock, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useLocation } from '@/hooks/useLocation';
 import { colors, typography } from '@/config/theme';
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  // Mounted for the entire authenticated session — persists across tab navigation.
+  useLocation();
 
   return (
     <Tabs

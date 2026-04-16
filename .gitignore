@@ -3,3 +3,7 @@
 
 # Environment files at root
 .env
+
+# Loose debug screenshots at project root
+/protares_*.png
+/*.png
