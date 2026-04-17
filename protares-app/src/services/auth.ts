@@ -21,7 +21,28 @@ import {
 } from '@react-native-google-signin/google-signin';
 
 import { supabase } from './supabase';
+import { env } from '@/config/env';
 import type { ResponderTier } from '@/types';
+
+// Lazy Google Sign-In configuration — only runs the first time the user
+// actually tries to sign in or out via Google. Previously this ran at
+// app cold-start in _layout.tsx, adding ~100–200 ms of native bridge
+// overhead to every launch, including for users who only use email.
+let googleConfigured = false;
+function ensureGoogleConfigured() {
+  if (googleConfigured) return;
+  if (!env.google.webClientId) return;
+  GoogleSignin.configure({
+    webClientId: env.google.webClientId,
+    iosClientId: env.google.iosClientId || undefined,
+    offlineAccess: true,
+    scopes: [
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+    ],
+  });
+  googleConfigured = true;
+}
 
 // ---------------------------------------------------------------------------
 // Email / password
@@ -89,6 +110,7 @@ function extractIdToken(result: unknown): string | null {
 }
 
 export async function signInWithGoogle() {
+  ensureGoogleConfigured();
   try {
     if (Platform.OS === 'android') {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
@@ -128,6 +150,7 @@ export async function signInWithGoogle() {
 // ---------------------------------------------------------------------------
 
 export async function signOut() {
+  ensureGoogleConfigured();
   try {
     const isGoogleSignedIn = await GoogleSignin.getCurrentUser();
     if (isGoogleSignedIn) {

@@ -37,12 +37,18 @@ export function useAuth() {
         if (error) throw error;
         if (!active) return;
         setSession(data.session);
+        // Mark initialised as soon as we know session state — don't block
+        // the splash screen on the profile network call. Profile loads in
+        // the background; screens that need it show a skeleton.
+        markInitialised();
+        setLoading(false);
         if (data.session) {
-          await loadResponderProfile();
+          loadResponderProfile().catch((err) =>
+            captureException(err, { context: 'useAuth.hydrate.loadProfile' })
+          );
         }
       } catch (err) {
         captureException(err, { context: 'useAuth.hydrate' });
-      } finally {
         if (active) {
           markInitialised();
           setLoading(false);
