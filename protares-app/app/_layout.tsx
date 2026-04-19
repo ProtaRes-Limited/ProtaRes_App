@@ -26,6 +26,7 @@ import { Slot, useRouter, useSegments } from 'expo-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 
 import { initSentry } from '@/lib/sentry';
+import { loadFeatureFlags, subscribeFeatureFlags } from '@/services/featureFlags';
 import { queryClient } from '@/lib/queryClient';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -76,8 +77,13 @@ function DeferredInit() {
   useEffect(() => {
     const timer = setTimeout(() => {
       initSentry();
+      void loadFeatureFlags();
     }, 0);
-    return () => clearTimeout(timer);
+    const unsubscribe = subscribeFeatureFlags();
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
   }, []);
   return null;
 }

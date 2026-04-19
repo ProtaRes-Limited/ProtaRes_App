@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
-import { ActivityIcon, MapPin, ShieldCheck } from 'lucide-react-native';
+import { ActivityIcon, MapPin, Phone, ShieldCheck } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 import { Screen } from '@/components/layout/Screen';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/Badge';
 import { useAuthStore } from '@/stores/auth';
 import { useLocationStore } from '@/stores/location';
 import { useSetAvailability } from '@/hooks/useProfile';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 import { colors, radii, spacing, typography } from '@/config/theme';
 
 const tierLabels: Record<string, { label: string; variant: 'info' | 'success' | 'warning' | 'neutral' }> = {
@@ -24,6 +25,7 @@ export default function HomeScreen() {
   const locationState = useLocationStore();
   const setAvailabilityMutation = useSetAvailability();
   const router = useRouter();
+  const emergencyContactsEnabled = useFeatureFlag('emergency_contacts');
 
   if (!user) return null;
 
@@ -114,6 +116,27 @@ export default function HomeScreen() {
             </View>
           </Card>
         </TouchableOpacity>
+
+        {/* Emergency services contacts — gated by feature flag */}
+        {emergencyContactsEnabled ? (
+          <TouchableOpacity
+            onPress={() => router.push('/emergency/contact')}
+            activeOpacity={0.85}
+            accessibilityLabel="Open emergency contacts"
+          >
+            <Card elevated style={styles.credentialsCard}>
+              <View style={[styles.cardIcon, { backgroundColor: '#FDECEA' }]}>
+                <Phone size={24} color={colors.errorRed} />
+              </View>
+              <View style={styles.cardBody}>
+                <Text style={styles.cardTitle}>Contact emergency services</Text>
+                <Text style={styles.cardSubtitle}>
+                  999 · 101 · 111 · local force + ambulance trust
+                </Text>
+              </View>
+            </Card>
+          </TouchableOpacity>
+        ) : null}
 
         {/* Stats */}
         <Card elevated style={styles.statsCard}>

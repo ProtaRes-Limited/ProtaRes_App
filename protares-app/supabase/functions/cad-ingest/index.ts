@@ -61,8 +61,62 @@ const TIMESTAMP_TOLERANCE_SECONDS = 300; // 5 minutes — replay attack window
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-ProtaRes-Signature, X-ProtaRes-Timestamp, X-ProtaRes-Source',
+  'Access-Control-Allow-Headers': 'Content-Type, X-ProtaRes-Signature, X-ProtaRes-Timestamp, X-ProtaRes-Source, X-ProtaRes-Service-Type',
 };
+
+// Known UK Trust / force / service identifiers grouped by which emergency
+// service they belong to. Extend this list as integration agreements are signed.
+// Sources not listed default to 'ambulance' for backwards compatibility with
+// the ambulance pilot that went live first.
+const SERVICE_TYPE_BY_SOURCE: Record<string, 'ambulance' | 'police' | 'fire'> = {
+  // Ambulance Trusts
+  YAS: 'ambulance', LAS: 'ambulance', NWAS: 'ambulance', NEAS: 'ambulance',
+  EMAS: 'ambulance', WMAS: 'ambulance', EEAST: 'ambulance', SECAMB: 'ambulance',
+  SCAS: 'ambulance', SWAST: 'ambulance', WAS: 'ambulance', SAS: 'ambulance',
+  NIAS: 'ambulance', IOW: 'ambulance',
+  // Police forces (common Home Office identifiers — extend as needed)
+  METPOL: 'police', HUMBERSIDE: 'police', WESTYORKS: 'police', GMP: 'police',
+  MERSEY: 'police', WESTMID: 'police', NORTHUMBRIA: 'police', THAMESVALLEY: 'police',
+  KENT: 'police', ESSEX: 'police', SUSSEX: 'police', HAMPSHIRE: 'police',
+  // Fire & Rescue services
+  LFB: 'fire', GMFRS: 'fire', WYFRS: 'fire', HIFRS: 'fire', KFRS: 'fire',
+  LFRS: 'fire', MFRS: 'fire', SFRS: 'fire',
+};
+
+/**
+ * Determine which emergency service a source identifier belongs to.
+ * Header X-ProtaRes-Service-Type ('ambulance'|'police'|'fire') takes priority
+ * if provided; otherwise we look up the source ID in the known-identifiers
+ * table; otherwise we default to 'ambulance' (the first pilot integration).
+ */
+function classifyServiceType(
+  sourceId: string,
+  explicitType: string | null
+): 'ambulance' | 'police' | 'fire' {
+  if (explicitType === 'ambulance' || explicitType === 'police' || explicitType === 'fire') {
+    return explicitType;
+  }
+  return SERVICE_TYPE_BY_SOURCE[sourceId] ?? 'ambulance';
+}
+
+/**
+ * Read a feature flag live from the database. Returns false if missing or on
+ * error, so an unconfigured or unreachable flag system never accidentally
+ * activates a feature that depends on a partner agreement.
+ */
+async function isFlagEnabled(supabase: any, key: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from('feature_flags')
+      .select('enabled')
+      .eq('key', key)
+      .maybeSingle();
+    if (error) return false;
+    return data?.enabled === true;
+  } catch {
+    return false;
+  }
+}
 
 // ─── HMAC verification ────────────────────────────────────────────────────────
 
@@ -127,6 +181,8 @@ serve(async (req) => {
   const providedSig = req.headers.get('X-ProtaRes-Signature') ?? '';
   const timestampStr = req.headers.get('X-ProtaRes-Timestamp') ?? '';
   const sourceId = (req.headers.get('X-ProtaRes-Source') ?? 'unknown').toUpperCase();
+  const explicitServiceType = req.headers.get('X-ProtaRes-Service-Type');
+  const serviceType = classifyServiceType(sourceId, explicitServiceType);
 
   if (!providedSig || !timestampStr) {
     return jsonError('Missing X-ProtaRes-Signature or X-ProtaRes-Timestamp', 401);
@@ -176,10 +232,27 @@ serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
 
+  // Gate police / fire sources on the corresponding feature flag. Ambulance is
+  // the first pilot and is always accepted (no flag). This prevents a partner
+  // pointing their webhook at us prematurely from creating emergencies before
+  // we've completed our integration validation.
+  if (serviceType === 'police') {
+    const enabled = await isFlagEnabled(supabase, 'police_cad_ingest');
+    if (!enabled) {
+      return jsonError('Police CAD ingest is not yet enabled for this environment', 403);
+    }
+  } else if (serviceType === 'fire') {
+    const enabled = await isFlagEnabled(supabase, 'fire_cad_ingest');
+    if (!enabled) {
+      return jsonError('Fire CAD ingest is not yet enabled for this environment', 403);
+    }
+  }
+
   const wkt = `POINT(${normalised.longitude} ${normalised.latitude})`;
   const emergencyPayload = {
     cad_incident_ref: normalised.cadIncidentRef,
     ingested_via: 'cad_webhook',
+    source_service_type: serviceType,
     emergency_type: normalised.emergencyType,
     severity: normalised.severity,
     location: wkt,

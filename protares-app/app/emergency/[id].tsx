@@ -2,7 +2,7 @@ import React from 'react';
 import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { Phone, Navigation, Check } from 'lucide-react-native';
+import { Phone, Navigation, Check, Headphones } from 'lucide-react-native';
 
 import { Screen } from '@/components/layout/Screen';
 import { Header } from '@/components/layout/Header';
@@ -14,6 +14,8 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { getEmergency } from '@/services/emergencies';
 import { useMarkOnScene, useMarkHandover, useUpdateEmergencyStatus } from '@/hooks/useEmergencies';
 import { useLocationStore } from '@/stores/location';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
+import { openDispatcherChannel } from '@/services/dispatcherChannel';
 import { formatDistance } from '@/lib/distance';
 import { EMERGENCY_SERVICE_NUMBER } from '@/lib/constants';
 import { colors, spacing, typography } from '@/config/theme';
@@ -30,6 +32,7 @@ export default function EmergencyDetailScreen() {
   const markOnScene = useMarkOnScene();
   const markHandover = useMarkHandover();
   const updateStatus = useUpdateEmergencyStatus();
+  const dispatcherVoiceEnabled = useFeatureFlag('dispatcher_voice_channel');
 
   if (isLoading) {
     return (
@@ -78,6 +81,21 @@ export default function EmergencyDetailScreen() {
         router.back();
       },
     });
+  };
+
+  const handleDispatcherCall = async () => {
+    try {
+      await openDispatcherChannel({
+        emergencyId: data.id,
+        // TODO: wire the actual response row id once that is threaded through.
+        responseId: data.id,
+      });
+    } catch (err) {
+      Alert.alert(
+        'Voice channel unavailable',
+        err instanceof Error ? err.message : 'Could not open dispatcher channel.'
+      );
+    }
   };
 
   return (
@@ -165,6 +183,17 @@ export default function EmergencyDetailScreen() {
             onPress={handleNavigate}
             fullWidth
           />
+
+          {dispatcherVoiceEnabled ? (
+            <Button
+              label="Talk to dispatcher"
+              variant="outline"
+              size="lg"
+              leftIcon={<Headphones size={18} color={colors.nhsBlue} />}
+              onPress={handleDispatcherCall}
+              fullWidth
+            />
+          ) : null}
 
           {data.status === 'responder_en_route' ? (
             <Button

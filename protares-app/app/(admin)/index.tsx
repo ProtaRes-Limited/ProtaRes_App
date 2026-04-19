@@ -52,6 +52,7 @@ export default function AdminDashboard() {
     { label: 'Consent records', sub: 'UK GDPR Article 7 ledger', href: '/(admin)/consent', color: colors.nhsBlue },
     { label: 'Notification log', sub: 'Push · SMS · In-app', href: '/(admin)/notifications', color: colors.nhsBlue },
     { label: 'Audit log', sub: 'All system actions', href: '/(admin)/audit', color: colors.grey2 },
+    { label: 'Feature flags', sub: 'Enable / disable pending integrations', href: '/(admin)/feature-flags', color: colors.nhsBlue },
   ];
 
   return (
